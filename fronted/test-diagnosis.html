@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dify API 诊断工具</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      border-bottom: 3px solid #4CAF50;
+      padding-bottom: 10px;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    #output {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 20px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      line-height: 1.6;
+      max-height: 600px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+    }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+    .info { background: #d1ecf1; color: #0c5460; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 Dify 地方政策知识库诊断工具</h1>
+
+    <div class="status info">
+      <strong>说明：</strong>此工具用于诊断地方政策知识库的 API 访问权限问题
+    </div>
+
+    <button id="diagnoseBtn" onclick="runDiagnosis()">开始诊断</button>
+    <button onclick="clearOutput()">清空输出</button>
+
+    <h3>诊断结果：</h3>
+    <div id="output">等待开始诊断...</div>
+  </div>
+
+  <script type="module">
+    import { diagnoseLocalPolicyAccess } from './src/api/difyApi.js';
+
+    window.runDiagnosis = async function() {
+      const btn = document.getElementById('diagnoseBtn');
+      const output = document.getElementById('output');
+
+      btn.disabled = true;
+      output.textContent = '🚀 诊断开始...\n\n';
+
+      // 捕获 console.log
+      const logs = [];
+      const originalLog = console.log;
+      console.log = function(...args) {
+        const message = args.join(' ');
+        logs.push(message);
+        output.textContent += message + '\n';
+        originalLog.apply(console, args);
+      };
+
+      try {
+        const results = await diagnoseLocalPolicyAccess();
+
+        console.log('\n' + '='.repeat(60));
+        console.log('📊 诊断结果汇总');
+        console.log('='.repeat(60));
+        console.log(`知识库列表获取: ${results.datasetList ? '✅ 成功' : '❌ 失败'}`);
+        console.log(`地方政策知识库: ${results.localDatasetFound ? '✅ 找到' : '❌ 未找到'}`);
+        console.log(`文档列表访问: ${results.documentsAccess === 'success' ? '✅ 成功' : '❌ 失败'}`);
+        console.log(`分段信息访问: ${results.segmentsAccess === 'success' ? '✅ 成功' : '❌ 失败'}`);
+
+        if (results.error) {
+          console.log(`\n❌ 主要问题: ${results.error}`);
+        }
+
+        console.log('\n💡 建议解决方案:');
+        if (results.segmentsAccess === 'failed') {
+          console.log('  1. 检查 API Key 是否具有访问私有知识库分段的权限');
+          console.log('  2. 确认地方政策知识库的权限设置');
+          console.log('  3. 尝试使用知识库专属的 API Key');
+          console.log('  4. 联系 Dify 管理员分配正确的权限');
+        }
+
+      } catch (error) {
+        console.log('\n❌ 诊断过程发生错误:');
+        console.log(error.message);
+        console.log(error.stack);
+      } finally {
+        console.log = originalLog;
+        btn.disabled = false;
+      }
+    };
+
+    window.clearOutput = function() {
+      document.getElementById('output').textContent = '等待开始诊断...';
+    };
+  </script>
+</body>
+</html>
