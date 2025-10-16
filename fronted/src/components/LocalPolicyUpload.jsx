@@ -1,24 +1,18 @@
 import React, { useState } from 'react';
-import { Card, Typography, Space, Button, Upload, message, Input, Divider } from 'antd';
+import { Card, Typography, Space, Button, Upload, message, Divider, Tag } from 'antd';
 import { ArrowLeftOutlined, UploadOutlined, FileMarkdownOutlined, FileTextOutlined, DownOutlined, UpOutlined } from '@ant-design/icons';
 import { recognizeDocument, extractMarkdown } from '../api/textinApi';
+import { extractSegments } from '../api/backendApi';
+import TocViewer from './TocViewer';
 
 const { Title, Paragraph, Text } = Typography;
 
+// 智谱 BigModel 解析所需 Token（示例）
 const defaultCredentials = {
-  appId: '69bad75362e19a06c1cbbcc85cb41db0',
-  secretCode: '560544972179686676b68a8e67efc0f2',
+  token: 'f3c226a18383452c8d5958519619e4bf.h35ddv1JmcoLarYe',
 };
 
-const defaultOptions = {
-  table_flavor: 'md',
-  get_image: 'objects',
-  paratext_mode: 'none',
-  markdown_details: 0,
-  crop_dewarp: 0,
-  remove_watermark: 1,
-  apply_chart: 1,
-};
+// 智谱接口不需要额外的可选解析参数
 
 const LocalPolicyUpload = ({ onBack }) => {
   const [file, setFile] = useState(null);
@@ -26,7 +20,9 @@ const LocalPolicyUpload = ({ onBack }) => {
   const [responseText, setResponseText] = useState('');
   const [markdown, setMarkdown] = useState('');
   const [markdownCollapsed, setMarkdownCollapsed] = useState(true);
-  const [options, setOptions] = useState(defaultOptions);
+  // 智谱解析无需 options 参数
+  const [structured, setStructured] = useState(null); // 后端结构化响应
+  const [selectedArticle, setSelectedArticle] = useState('');
 
   const PREVIEW_LINES = 8;
   const getCollapsedMarkdown = (text) => {
@@ -51,19 +47,26 @@ const LocalPolicyUpload = ({ onBack }) => {
       setLoading(true);
       setResponseText('');
       setMarkdown('');
+      setStructured(null);
+      setSelectedArticle('');
 
-      const resText = await recognizeDocument(file, options, defaultCredentials);
-      setResponseText(resText);
-      const md = extractMarkdown(resText);
+      const resObj = await recognizeDocument(file, {}, defaultCredentials);
+      setResponseText(JSON.stringify(resObj, null, 2));
+      const md = extractMarkdown(resObj);
       setMarkdown(md);
       if (!md) {
-        message.info('解析成功，但未返回 markdown 字段');
+        message.info('解析成功，但未返回 content 字段');
       } else {
-        message.success('解析成功，已生成 Markdown');
+        message.success('解析成功，已生成文档内容');
       }
+
+      // 紧接着执行结构化提取
+      const seg = await extractSegments(file, false);
+      setStructured(seg);
+      message.success('结构化提取成功');
     } catch (err) {
       console.error(err);
-      message.error(`解析失败：${err.message || '未知错误'}`);
+      message.error(`解析或结构化提取失败：${err.message || '未知错误'}`);
     } finally {
       setLoading(false);
     }
@@ -96,8 +99,13 @@ const LocalPolicyUpload = ({ onBack }) => {
               </Button>
             )}
             {responseText && (
-              <Button icon={<FileTextOutlined />} onClick={() => downloadText(responseText, 'result.json')}>
+              <Button icon={<FileTextOutlined />} onClick={() => downloadText(responseText, 'textin.json')}>
                 下载原始响应
+              </Button>
+            )}
+            {structured && (
+              <Button icon={<FileTextOutlined />} onClick={() => downloadText(JSON.stringify(structured, null, 2), 'structured.json')}>
+                下载结构化JSON
               </Button>
             )}
           </Space>
@@ -116,43 +124,7 @@ const LocalPolicyUpload = ({ onBack }) => {
           <p className="ant-upload-hint">单次上传一个文件，最大 50MB</p>
         </Upload.Dragger>
 
-        <Divider />
-
-        <Title level={4}>请求参数（可选）</Title>
-        <Space direction="vertical" className="w-full">
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <Text>table_flavor</Text>
-              <Input value={options.table_flavor} onChange={(e) => setOptions({ ...options, table_flavor: e.target.value })} />
-            </div>
-            <div className="flex-1">
-              <Text>get_image</Text>
-              <Input value={options.get_image} onChange={(e) => setOptions({ ...options, get_image: e.target.value })} />
-            </div>
-            <div className="flex-1">
-              <Text>paratext_mode</Text>
-              <Input value={options.paratext_mode} onChange={(e) => setOptions({ ...options, paratext_mode: e.target.value })} />
-            </div>
-          </div>
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <Text>markdown_details</Text>
-              <Input type="number" value={options.markdown_details} onChange={(e) => setOptions({ ...options, markdown_details: Number(e.target.value) })} />
-            </div>
-            <div className="flex-1">
-              <Text>crop_dewarp</Text>
-              <Input type="number" value={options.crop_dewarp} onChange={(e) => setOptions({ ...options, crop_dewarp: Number(e.target.value) })} />
-            </div>
-            <div className="flex-1">
-              <Text>remove_watermark</Text>
-              <Input type="number" value={options.remove_watermark} onChange={(e) => setOptions({ ...options, remove_watermark: Number(e.target.value) })} />
-            </div>
-            <div className="flex-1">
-              <Text>apply_chart</Text>
-              <Input type="number" value={options.apply_chart} onChange={(e) => setOptions({ ...options, apply_chart: Number(e.target.value) })} />
-            </div>
-          </div>
-        </Space>
+        {/* 智谱接口不再需要额外的请求参数配置 */}
       </Card>
 
       {markdown && (() => {
@@ -171,6 +143,31 @@ const LocalPolicyUpload = ({ onBack }) => {
           </Card>
         );
       })()}
+
+      {structured && (
+        <Card title="结构化目录预览">
+          <Space size="large" className="mb-4">
+            <span>章节 <Tag color="blue">{structured.counts?.chapters ?? 0}</Tag></span>
+            <span>节 <Tag color="green">{structured.counts?.sections ?? 0}</Tag></span>
+            <span>条款 <Tag color="purple">{structured.counts?.articles ?? 0}</Tag></span>
+          </Space>
+          <TocViewer
+            toc={structured.toc}
+            fileName={structured.file?.name}
+            onSelectArticle={(_node, text) => setSelectedArticle(text)}
+          />
+        </Card>
+      )}
+
+      {structured && (
+        <Card title="条款详情">
+          {selectedArticle ? (
+            <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{selectedArticle}</pre>
+          ) : (
+            <div className="text-gray-500">点击目录中的条款以查看详细内容</div>
+          )}
+        </Card>
+      )}
 
       {/* {responseText && (
         <Card title="完整 JSON 响应">
