@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, Typography, Space, Button, Upload, message, Divider, Tag } from 'antd';
 import { ArrowLeftOutlined, UploadOutlined, FileMarkdownOutlined, FileTextOutlined, DownOutlined, UpOutlined } from '@ant-design/icons';
-import { recognizeDocument, extractMarkdown } from '../api/textinApi';
+import { recognizeDocument, extractMarkdown } from '../api/zhipuApi';
 import { extractSegments } from '../api/backendApi';
 import TocViewer from './TocViewer';
 

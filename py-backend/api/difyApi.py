@@ -189,19 +189,4 @@ def dify_get_keywords(file_name:str="",file_content:str=""):
         print(f"获取政策关键信息失败: {str(e)}")
         return None
 
-
-# 使用示例
-# if __name__ == "__main__":
-#     file_path = 'py-backend\测试文件\陕西电力交易中心有限公司关于印发《陕西电力市场履约保函保险管理实施细则（2025年4月修订版）》的通知 - 副本.md'
-#     # if os.path.exists(file_path):
-#     #     print(f"\n正在上传: {file_path}")
-#     #     file_id = upload_file(file_path=file_path,upload_file_url=UPLOAD_FILE_URL,dify_api_key="app-PqEJD4uzxPxFL3lY1zq1fbM3")
-#     #     if file_id:
-#     #         print(f"上传成功，文件ID: {file_id}")
-#     #     else:
-#     #         print("上传失败")
-#     # else:
-#     #     print(f"文件不存在: {file_path}")
-
-#     # res = dify_get_file_content(file_path=file_path,dify_api_key="app-PqEJD4uzxPxFL3lY1zq1fbM3")
-#     # print(res)
+# dify知识库操作：
