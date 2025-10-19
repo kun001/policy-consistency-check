@@ -1,122 +1,145 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException, Form
-from pydantic import BaseModel
-import os
-import tempfile 
-import shutil
-import json
-import re
+﻿from typing import Any, Dict, Optional
 
-# 导入现有的功能模块
+import os
+import shutil
+import tempfile
+
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from api.difyApi import dify_get_file_content
-from src.doc_structure_recognition import build_segments_struct,format_segments_output
-from src.utils import save_segments2csv,build_toc
-from src.pydantic_models import DocumentTOCResponse
+from api.embeddingApi import DEFAULT_EMBEDDING_MODEL, get_embeddings_from_siliconflow
+from router.weaviate import router as weaviate_router
+from src.doc_structure_recognition import build_segments_struct, format_segments_output
+from src.pydantic_models import *
+from src.utils import build_toc, save_segments2csv
+
+DEFAULT_SILICONFLOW_API_TOKEN = "sk-dybroxxstjaxkyrnevsqdjikzardzzsppbvwbmimrflpoyfj"
+DEFAULT_OUTPUT_DIR = "E:/MyProjects/policy-consistency-check/py-backend/output"
 
 app = FastAPI(
-    title='一致性检查',
-    description='政策文件一致性检查后端api',
-    version='1.0.0'
+    title="一致性检查",
+    description="一致性检查后端 API",
+    version="1.0.0",
 )
+
+app.include_router(weaviate_router)
+
 
 @app.post("/api/extract-segments", response_model=DocumentTOCResponse)
 async def extract_document_segments(
     file: UploadFile = File(...),
-    save: bool = Form(False)
+    save: bool = Form(False),
 ):
-    """
-    上传文档并提取分段内容
-    """
-    temp_file_path = None
-    
+    """上传文档并提取段落结构。"""
+    temp_file_path: Optional[str] = None
+
     try:
-        # 验证文件类型
-        allowed_extensions = ['.txt', '.pdf', '.docx', '.md']
+        allowed_extensions = [".txt", ".pdf", ".docx", ".md"]
         file_extension = os.path.splitext(file.filename)[1].lower()
-        
+
         if file_extension not in allowed_extensions:
             raise HTTPException(
                 status_code=400,
-                detail=f"不支持的文件类型': {file_extension}。支持的格式: {', '.join(allowed_extensions)}"
+                detail=f"不支持的文件类型: {file_extension}。支持的格式: {', '.join(allowed_extensions)}",
             )
-        
-        # 创建临时文件
+
         with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
             temp_file_path = temp_file.name
             shutil.copyfileobj(file.file, temp_file)
-        
-        # 获取文档内容
-        file_content,key_words = dify_get_file_content(temp_file_path)
-        
+
+        file_content, key_words = dify_get_file_content(temp_file_path)
+
         if not file_content:
             raise HTTPException(
                 status_code=500,
-                detail='文档内容提取失败，请检查文件格式或Dify服务状态'
+                detail="文档内容提取失败，请检查文件格式或 Dify 服务状态。",
             )
-        
-        # 提取分段
+
         file_struct = build_segments_struct(
-                                file_content = file_content,
-                                file_name = file.filename
-                            )
-        segments = file_struct["segments"]
-        
+            file_content=file_content,
+            file_name=file.filename,
+        )
+        segments = file_struct.get("segments", [])
+
         if not segments:
             raise HTTPException(
                 status_code=422,
-                detail='未能从文档中提取到有效的政策条款，请检查文档格式'
+                detail="未能从文档中提取到有效的政策条款，请检查文档格式。",
             )
 
-        # 创建树状返回结果
         toc_tree, counts = build_toc(segments)
 
-        # 保留原有保存 CSV 的能力（使用扁平化文本输出）
         formatted_output = format_segments_output(
-                        file_name=os.path.splitext(file.filename)[0],
-                        segments=segments)
-        
-        if save:
-            csv_file_path = save_segments2csv(
-                formatted_output,
-                file_name = os.path.splitext(file.filename)[0],
-                output_dir = "E:/MyProjects/policy-consistency-check/py-backend/output"
-            )
-            print("已保存在：", csv_file_path)
+            file_name=os.path.splitext(file.filename)[0],
+            segments=segments,
+        )
 
-            return {
-                "success": True,
-                "file": {"name": file.filename},
-                "toc": toc_tree,
-                "counts": counts,
-                "save_path": csv_file_path
-            }
-
-        return {
+        response_payload: Dict[str, Any] = {
             "success": True,
             "file": {"name": file.filename},
             "toc": toc_tree,
-            "counts": counts
+            "counts": counts,
         }
-        
+
+        if save:
+            csv_file_path = save_segments2csv(
+                formatted_output,
+                file_name=os.path.splitext(file.filename)[0],
+                output_dir=DEFAULT_OUTPUT_DIR,
+            )
+            response_payload["save_path"] = csv_file_path
+
+        if key_words:
+            response_payload["keywords"] = key_words
+
+        return response_payload
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
     finally:
-        
-        # 清理临时文件
         if temp_file_path and os.path.exists(temp_file_path):
             try:
                 os.unlink(temp_file_path)
-            except:
+            except OSError:
                 pass
+
+
+@app.post("/api/embeddings")
+async def generate_embeddings(payload: EmbeddingRequest):
+    api_token = payload.api_token or DEFAULT_SILICONFLOW_API_TOKEN
+    if not api_token:
+        raise HTTPException(status_code=400, detail="缺少 SiliconFlow API token")
+
+    model = payload.model or DEFAULT_EMBEDDING_MODEL
+    timeout = payload.timeout or 10
+
+    try:
+        result = get_embeddings_from_siliconflow(
+            inputs=payload.inputs,
+            api_token=api_token,
+            model=model,
+            timeout=timeout,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except Exception as error:  # pragma: no cover - 网络异常等
+        raise HTTPException(status_code=502, detail=str(error)) from error
+
+    if not result:
+        raise HTTPException(status_code=502, detail="Embedding 服务返回空结果")
+
+    return {
+        "success": True,
+        "model": model,
+        "data": result,
+    }
+
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
-        app, 
-        host="0.0.0.0", 
-        port=10010
+        app,
+        host="0.0.0.0",
+        port=10010,
     )

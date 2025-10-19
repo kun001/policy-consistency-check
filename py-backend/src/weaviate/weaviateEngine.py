@@ -17,11 +17,10 @@ from weaviate.auth import AuthApiKey
 from weaviate.classes.query import MetadataQuery
 from weaviate.collections import Collection
 
-API_ROOT = Path(__file__).resolve().parent.parent
-if str(API_ROOT) not in sys.path:
-    sys.path.append(str(API_ROOT))
-
-from embeddingApi import get_embeddings_from_siliconflow
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.append(str(PROJECT_ROOT))
+from api.embeddingApi import get_embeddings_from_siliconflow
 
 
 DEFAULT_WEAVIATE_HTTP_HOST = "115.190.118.177"
@@ -58,7 +57,7 @@ class WeaviateEngine:
         )
 
         if not self._collection_exists():
-            self._create_collection()
+            self.create_collection()
 
     def _build_client_params(
         self,
@@ -89,7 +88,7 @@ class WeaviateEngine:
             print(f"Failed to check collection existence: {error}")
             return False
 
-    def _create_collection(self) -> None:
+    def create_collection(self) -> None:
         try:
             self.client.collections.create(
                 name=self.collection_name,
@@ -231,16 +230,25 @@ class WeaviateEngine:
             print(f"Failed to delete object {normalized_uuid}: {error}")
             return False
 
+    def delete_collection(self, collection_name: Optional[str] = None) -> bool:
+        """
+        Delete a collection by name; defaults to this engine's collection.
+        """
+        target_collection = collection_name or self.collection_name
+        try:
+            if not self.client.collections.exists(target_collection):
+                return False
+            self.client.collections.delete(target_collection)
+            return True
+        except Exception as error:  # pragma: no cover
+            print(f"Failed to delete collection {target_collection}: {error}")
+            return False
+
     def drop_collection(self) -> bool:
         """
         Delete the entire collection from Weaviate.
         """
-        try:
-            self.client.collections.delete(self.collection_name)
-            return True
-        except Exception as error:  # pragma: no cover
-            print(f"Failed to drop collection {self.collection_name}: {error}")
-            return False
+        return self.delete_collection(self.collection_name)
 
     def build_filter(
         self,
