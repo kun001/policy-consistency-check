@@ -1,0 +1,28 @@
+{
+  "id": "doc-1",
+  "type": "document",
+  "children": [
+    {
+      "id": "ch-1",
+      "type": "chapter",
+      "label": "第一章 总则",
+      "index": 1,
+      "children": [
+        {
+          "id": "art-1",
+          "type": "article",
+          "label": "第一条",
+          "index": 1,
+          "text": "第一条 本办法适用于..."
+        },
+        {
+          "id": "art-2",
+          "type": "article",
+          "label": "第二条",
+          "index": 2,
+          "text": "第二条 市场交易遵循..."
+        }
+      ]
+    }
+  ]
+}

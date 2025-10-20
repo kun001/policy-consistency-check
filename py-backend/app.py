@@ -1,4 +1,4 @@
-﻿from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional
 
 import os
 import shutil
@@ -11,6 +11,8 @@ from router.weaviate import router as weaviate_router
 from src.doc_structure_recognition import build_segments_struct, format_segments_output
 from src.pydantic_models import *
 from src.utils import build_toc, save_segments2csv
+from src.storage import init_storage_and_db
+from src.storage import persist_parsed_document
 
 DEFAULT_SILICONFLOW_API_TOKEN = "sk-dybroxxstjaxkyrnevsqdjikzardzzsppbvwbmimrflpoyfj"
 DEFAULT_OUTPUT_DIR = "E:/MyProjects/policy-consistency-check/py-backend/output"
@@ -21,6 +23,12 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# 应用启动时初始化存储目录与SQLite数据库
+@app.on_event("startup")
+async def _startup_init():
+    db_path = init_storage_and_db()
+    print(f"[startup] storage initialized; sqlite db: {db_path}")
+
 app.include_router(weaviate_router)
 
 
@@ -28,6 +36,8 @@ app.include_router(weaviate_router)
 async def extract_document_segments(
     file: UploadFile = File(...),
     save: bool = Form(False),
+    persist: bool = Form(False),
+    collection_name: Optional[str] = Form(None),
 ):
     """上传文档并提取段落结构。"""
     temp_file_path: Optional[str] = None
@@ -90,6 +100,28 @@ async def extract_document_segments(
 
         if key_words:
             response_payload["keywords"] = key_words
+
+        # 持久化到 storage/docs/<collection>/<doc>/ 及数据库
+        if persist:
+            try:
+                ingest_result = persist_parsed_document(
+                    temp_file_path=temp_file_path,
+                    filename=file.filename,
+                    original_mime=None,
+                    file_content=file_content,
+                    segments=segments,
+                    toc=toc_tree,
+                    keywords=key_words,
+                    collection_name=collection_name or "policy_documents",
+                )
+                response_payload.update({
+                    "doc_id": ingest_result["doc_id"],
+                    "collection_id": ingest_result["collection_id"],
+                    "storage": ingest_result["paths"],
+                    "chunk_count": ingest_result["chunk_count"],
+                })
+            except Exception as e:
+                response_payload["persist_error"] = str(e)
 
         return response_payload
     except HTTPException:

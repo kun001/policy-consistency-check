@@ -1,0 +1,58 @@
+{
+  "id": "doc-1",
+  "type": "document",
+  "children": [
+    {
+      "id": "ch-1",
+      "type": "chapter",
+      "label": "第一章 总则",
+      "index": 1,
+      "children": [
+        {
+          "id": "art-1",
+          "type": "article",
+          "label": "第一条",
+          "index": 1,
+          "text": "第一条 本办法适用于..."
+        },
+        {
+          "id": "art-2",
+          "type": "article",
+          "label": "第二条",
+          "index": 2,
+          "text": "第二条 市场交易遵循..."
+        }
+      ]
+    },
+    {
+      "id": "ch-2",
+      "type": "chapter",
+      "label": "第二章 交易组织",
+      "index": 2,
+      "children": [
+        {
+          "id": "sec-1",
+          "type": "section",
+          "label": "第一节 会员管理",
+          "index": 1,
+          "children": [
+            {
+              "id": "art-3",
+              "type": "article",
+              "label": "第三条",
+              "index": 3,
+              "text": "第三条 会员资格..."
+            },
+            {
+              "id": "art-4",
+              "type": "article",
+              "label": "第四条",
+              "index": 4,
+              "text": "第四条 会员权利与义务..."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
