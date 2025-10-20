@@ -1,7 +1,7 @@
 import os
 import requests
 
-DIFY_URL = "http://180.184.42.136/v1"
+DIFY_URL = "http://180.184.42.136:6060/v1"
 UPLOAD_FILE_URL = f"{DIFY_URL}/files/upload"
 WORKFLOW_RUN_URL = f"{DIFY_URL}/workflows/run"
 

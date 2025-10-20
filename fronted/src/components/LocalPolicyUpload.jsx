@@ -1,31 +1,22 @@
 import React, { useState } from 'react';
-import { Card, Typography, Space, Button, Upload, message, Divider, Tag } from 'antd';
-import { ArrowLeftOutlined, UploadOutlined, FileMarkdownOutlined, FileTextOutlined, DownOutlined, UpOutlined } from '@ant-design/icons';
-import { recognizeDocument, extractMarkdown } from '../api/zhipuApi';
-import { extractSegments } from '../api/backendApi';
+import { Card, Typography, Space, Button, Upload, message, Tag } from 'antd';
+import { ArrowLeftOutlined, UploadOutlined, FileTextOutlined, DownOutlined, UpOutlined } from '@ant-design/icons';
+import { ingestAndIndex, getParsedDocument } from '../api/backendApi';
 import TocViewer from './TocViewer';
 
 const { Title, Paragraph, Text } = Typography;
-
-// 智谱 BigModel 解析所需 Token（示例）
-const defaultCredentials = {
-  token: 'f3c226a18383452c8d5958519619e4bf.h35ddv1JmcoLarYe',
-};
-
-// 智谱接口不需要额外的可选解析参数
 
 const LocalPolicyUpload = ({ onBack }) => {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [responseText, setResponseText] = useState('');
-  const [markdown, setMarkdown] = useState('');
-  const [markdownCollapsed, setMarkdownCollapsed] = useState(true);
-  // 智谱解析无需 options 参数
-  const [structured, setStructured] = useState(null); // 后端结构化响应
+  const [contentPreview, setContentPreview] = useState('');
+  const [contentCollapsed, setContentCollapsed] = useState(true);
+  const [structured, setStructured] = useState(null); // 后端结构化响应（toc/counts/file）
   const [selectedArticle, setSelectedArticle] = useState('');
 
   const PREVIEW_LINES = 8;
-  const getCollapsedMarkdown = (text) => {
+  const getCollapsedText = (text) => {
     const lines = String(text || '').split('\n');
     const isTruncated = lines.length > PREVIEW_LINES;
     const truncated = lines.slice(0, PREVIEW_LINES).join('\n');
@@ -46,27 +37,23 @@ const LocalPolicyUpload = ({ onBack }) => {
     try {
       setLoading(true);
       setResponseText('');
-      setMarkdown('');
+      setContentPreview('');
       setStructured(null);
       setSelectedArticle('');
 
-      const resObj = await recognizeDocument(file, {}, defaultCredentials);
-      setResponseText(JSON.stringify(resObj, null, 2));
-      const md = extractMarkdown(resObj);
-      setMarkdown(md);
-      if (!md) {
-        message.info('解析成功，但未返回 content 字段');
-      } else {
-        message.success('解析成功，已生成文档内容');
-      }
+      // 一次性上传并完成解析+切分+向量化+持久化
+      const ingest = await ingestAndIndex(file, { batch_size: 50, max_retries: 2 });
+      setResponseText(JSON.stringify(ingest, null, 2));
+      message.success('上传并索引完成');
 
-      // 紧接着执行结构化提取
-      const seg = await extractSegments(file, false);
-      setStructured(seg);
-      message.success('结构化提取成功');
+      // 拉取解析产物（正文、目录树、计数）
+      const parsed = await getParsedDocument(ingest.doc_id);
+      setStructured({ toc: parsed.toc, counts: parsed.counts, file: parsed.file });
+      setContentPreview(parsed.content || '');
+      message.success('解析产物获取成功');
     } catch (err) {
       console.error(err);
-      message.error(`解析或结构化提取失败：${err.message || '未知错误'}`);
+      message.error(`上传或解析失败：${err.message || '未知错误'}`);
     } finally {
       setLoading(false);
     }
@@ -91,21 +78,16 @@ const LocalPolicyUpload = ({ onBack }) => {
           </Button>
           <Space>
             <Button type="primary" icon={<UploadOutlined />} onClick={handleParse} loading={loading} disabled={!file}>
-              解析文件
+              上传并解析
             </Button>
-            {markdown && (
-              <Button icon={<FileMarkdownOutlined />} onClick={() => downloadText(markdown, 'result.md')}>
-                下载 Markdown
-              </Button>
-            )}
             {responseText && (
-              <Button icon={<FileTextOutlined />} onClick={() => downloadText(responseText, 'textin.json')}>
-                下载原始响应
+              <Button icon={<FileTextOutlined />} onClick={() => downloadText(responseText, 'ingest-response.json')}>
+                下载后端响应
               </Button>
             )}
             {structured && (
-              <Button icon={<FileTextOutlined />} onClick={() => downloadText(JSON.stringify(structured, null, 2), 'structured.json')}>
-                下载结构化JSON
+              <Button icon={<FileTextOutlined />} onClick={() => downloadText(JSON.stringify(structured, null, 2), 'parsed.json')}>
+                下载解析产物
               </Button>
             )}
           </Space>
@@ -113,29 +95,27 @@ const LocalPolicyUpload = ({ onBack }) => {
 
         <Title level={3}>上传并解析地方政策文件</Title>
         <Paragraph type="secondary">
-          支持 PDF/图片等格式，解析为 Markdown 与结构化 JSON。
+          支持 PDF/图片等格式，解析为正文与结构化 JSON（后端一次完成）。
         </Paragraph>
 
-        <Upload.Dragger beforeUpload={beforeUpload} maxCount={1} accept=".pdf,.png,.jpg,.jpeg,.bmp,.tiff">
+        <Upload.Dragger beforeUpload={beforeUpload} maxCount={1} accept=".pdf,.png,.jpg,.jpeg,.bmp,.tiff,.docx,.txt,.md">
           <p className="ant-upload-drag-icon">
             <UploadOutlined />
           </p>
           <p className="ant-upload-text">点击或拖拽文件到此处</p>
           <p className="ant-upload-hint">单次上传一个文件，最大 50MB</p>
         </Upload.Dragger>
-
-        {/* 智谱接口不再需要额外的请求参数配置 */}
       </Card>
 
-      {markdown && (() => {
-        const { truncated, isTruncated } = getCollapsedMarkdown(markdown);
-        const displayText = markdownCollapsed ? truncated + (isTruncated ? '\n…' : '') : markdown;
+      {contentPreview && (() => {
+        const { truncated, isTruncated } = getCollapsedText(contentPreview);
+        const displayText = contentCollapsed ? truncated + (isTruncated ? '\n…' : '') : contentPreview;
         return (
           <Card
-            title="Markdown 预览"
+            title="正文预览"
             extra={
-              <Button type="link" onClick={() => setMarkdownCollapsed(!markdownCollapsed)} icon={markdownCollapsed ? <DownOutlined /> : <UpOutlined />}>
-                {markdownCollapsed ? '展开' : '收起'}
+              <Button type="link" onClick={() => setContentCollapsed(!contentCollapsed)} icon={contentCollapsed ? <DownOutlined /> : <UpOutlined />}>
+                {contentCollapsed ? '展开' : '收起'}
               </Button>
             }
           >
@@ -168,12 +148,6 @@ const LocalPolicyUpload = ({ onBack }) => {
           )}
         </Card>
       )}
-
-      {/* {responseText && (
-        <Card title="完整 JSON 响应">
-          <pre style={{ whiteSpace: 'pre-wrap' }}>{responseText}</pre>
-        </Card>
-      )} */}
     </div>
   );
 };

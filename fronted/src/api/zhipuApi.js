@@ -12,7 +12,7 @@ function detectFileType(fileBlob) {
   if (mime === 'application/msword') return 'DOC';
   if (mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return 'DOCX';
   if (mime.startsWith('image/')) return 'IMAGE';
-  return 'PDF'; // 默认按 PDF 处理（与示例一致）
+  return 'PDF';
 }
 
 // 上传文件并获取解析任务ID
@@ -85,7 +85,7 @@ export async function recognizeDocument(fileBlob, options = {}, credentials, max
   throw new Error(`解析结果未就绪，已重试${maxRetries}次`);
 }
 
-// 提取文本内容（从智谱结果对象或JSON字符串）
+// 提取文本内容
 export function extractMarkdown(response) {
   try {
     if (!response) return '';

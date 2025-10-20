@@ -1,5 +1,5 @@
 // Dify知识库API服务
-const DIFY_BASE_URL = 'http://180.184.42.136/v1';
+const DIFY_BASE_URL = 'http://180.184.42.136:6060/v1';
 const DATASET_API_KEY = 'dataset-9narIk3OvvyO2rviVOhDk6cf';
 const TARGET_DATASET_ID = 'a30efafb-f076-4c30-af65-57d1bd335a23'; // 国家政策知识库
 const LOCAL_DATASET_ID = 'aba7c075-ed0f-4f55-9de2-55efb78e6a94'; // 地方政策知识库

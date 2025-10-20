@@ -61,7 +61,7 @@ def index_document_chunks(
     siliconflow_api_token: str,
     weaviate_api_key: Optional[str] = None,
     client_params: Optional[Dict[str, Any]] = None,
-    batch_size: int = 50,
+    batch_size: int = 32,
     max_retries: int = 2,
 ) -> Dict[str, Any]:
     """将指定 doc 的 chunks 批量嵌入并写入 Weaviate，失败重试并更新数据库状态。

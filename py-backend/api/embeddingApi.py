@@ -9,6 +9,8 @@ import requests
 SILICONFLOW_API_BASE_URL = "https://api.siliconflow.cn/v1"
 EMBEDDING_URL = f"{SILICONFLOW_API_BASE_URL}/embeddings"
 DEFAULT_EMBEDDING_MODEL = "BAAI/bge-large-zh-v1.5"
+# DEFAULT_EMBEDDING_MODEL = "Qwen/Qwen3-Embedding-8B"
+MAX_EMBED_INPUT_CHARS = 512
 
 
 def _normalize_inputs(texts: Union[str, Sequence[str]]) -> List[str]:
@@ -41,6 +43,7 @@ def get_embeddings_from_siliconflow(
 ) -> dict:
     """
     调用硅基流动嵌入API，返回 embedding 结果
+    - 输入文本将被截断至最多 512 字（MAX_EMBED_INPUT_CHARS）
     """
     if not api_token:
         raise ValueError("必须提供有效的 API token")
@@ -51,6 +54,9 @@ def get_embeddings_from_siliconflow(
         print(f"参数错误: {error}")
         return {}
 
+    # 限制每段文本最多 512 字，超过则截断
+    truncated_inputs = [text[:MAX_EMBED_INPUT_CHARS] for text in normalized_inputs]
+
     headers = {
         "Authorization": f"Bearer {api_token}",
         "Content-Type": "application/json",
@@ -58,7 +64,7 @@ def get_embeddings_from_siliconflow(
 
     payload = {
         "model": model,
-        "input": normalized_inputs,
+        "input": truncated_inputs,
     }
 
     try:

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Typography, Tag, Space, Input, Button, Spin, Empty, message, Divider, Statistic, Row, Col, Tooltip } from 'antd';
 import { ArrowLeftOutlined, SearchOutlined, FileTextOutlined, ClockCircleOutlined, NumberOutlined, CheckCircleOutlined } from '@ant-design/icons';
-import { getDatasetDocumentSegments, LOCAL_DATASET_ID, TARGET_DATASET_ID } from '../api/difyApi';
+import { getDatasetDocumentSegments, LOCAL_DATASET_ID, TARGET_DATASET_ID } from '../api/weaviateApi';
 
 const { Title, Text, Paragraph } = Typography;
 const { Search } = Input;

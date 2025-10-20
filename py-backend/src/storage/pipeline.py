@@ -26,36 +26,58 @@ def guess_mime(filename: str) -> str:
 
 def flatten_segments_to_chunks(segments: Any) -> List[Dict[str, Any]]:
     """根据分段结构生成 chunk 列表：title、content、section_path。
-    复用 format_segments_output 输出的路径 + 条款文本，解析出章节路径与“第..条”。
+    路径从结构化 segments 的层级直接提取，title 仅提取“第X条”。
     """
-    from doc_structure_recognition import format_segments_output
-
-    lines: List[str] = format_segments_output(segments)
     items: List[Dict[str, Any]] = []
-    re_article = re.compile(r"^(?:(?P<prefix>.*?))?\s*(?P<title>第[一二三四五六七八九十百千零O0-9０-９]+条)\s*(?P<body>.*)$")
+    # 仅提取“第X条”标题，后续内容作为正文
+    re_article = re.compile(r"^\s*(?P<title>第[一二三四五六七八九十百千零O0-9０-９]+条)\s*(?P<body>.*)$", re.S)
 
-    for idx, line in enumerate(lines):
-        text = (line or "").strip()
-        m = re_article.match(text)
-        if not m:
-            # 无法匹配“第..条”的情况，作为纯文本条款处理
-            items.append({
-                "chunk_index": idx,
-                "title": None,
-                "content": text,
-                "section_path": [],
-            })
-            continue
-        prefix = (m.group("prefix") or "").strip()
-        section_path = [p for p in prefix.split(" ") if p]
-        title = m.group("title").strip()
-        body = (m.group("body") or "").strip()
-        items.append({
-            "chunk_index": idx,
-            "title": title,
-            "content": body,
-            "section_path": section_path,
-        })
+    def walk(s: Any, path_parts: List[str]) -> None:
+        # 叶子：字符串条款
+        if isinstance(s, str):
+            text = (s or "").strip()
+            if not text:
+                return
+            m = re_article.match(text)
+            if m:
+                title = (m.group("title") or "").strip()
+                body = (m.group("body") or "").strip()
+                items.append({
+                    "chunk_index": len(items),
+                    "title": title,
+                    "content": body,
+                    "section_path": path_parts,
+                })
+            else:
+                # 非“第X条”结构，作为纯文本条款处理，保留路径
+                items.append({
+                    "chunk_index": len(items),
+                    "title": None,
+                    "content": text,
+                    "section_path": path_parts,
+                })
+            return
+
+        # 列表：逐项递归
+        if isinstance(s, list):
+            for elem in s:
+                walk(elem, path_parts)
+            return
+
+        # 字典：层级展开（兼容上层带 {"segments": ...} 的结构）
+        if isinstance(s, dict):
+            if "segments" in s:
+                walk(s["segments"], path_parts)
+            else:
+                for key, value in s.items():
+                    new_path = path_parts + ([key] if key else [])
+                    walk(value, new_path)
+            return
+
+        # 其他类型忽略
+        return
+
+    walk(segments, [])
     return items
 
 
@@ -151,7 +173,7 @@ def persist_parsed_document(
             token_count=None,
             metadata=None,
             weaviate_id=None,
-            embedding_status="pending",
+            embedding_status="pending"
         )
 
     # 更新文档状态为 succeeded，并记录解析统计
@@ -166,7 +188,7 @@ def persist_parsed_document(
             "parsed": str(parsed_dir),
             "storage_path": storage_path_rel,
         },
-        "chunk_count": len(chunks),
+        "chunk_count": len(chunks)
     }
 
 
