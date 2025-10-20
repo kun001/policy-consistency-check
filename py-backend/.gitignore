@@ -3,9 +3,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 .cache/
-测试文件
-tests/
-docs/
 
 # C extensions
 *.so
