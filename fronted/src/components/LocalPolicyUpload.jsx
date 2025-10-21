@@ -42,7 +42,7 @@ const LocalPolicyUpload = ({ onBack }) => {
       setSelectedArticle('');
 
       // 一次性上传并完成解析+切分+向量化+持久化
-      const ingest = await ingestAndIndex(file, { batch_size: 50, max_retries: 2 });
+      const ingest = await ingestAndIndex(file, { batch_size: 8, max_retries: 2 });
       setResponseText(JSON.stringify(ingest, null, 2));
       message.success('上传并索引完成');
 

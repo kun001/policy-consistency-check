@@ -33,7 +33,7 @@ class IndexDocRequest(BaseModel):
     siliconflow_api_token: Optional[str] = None
     weaviate_api_key: Optional[str] = None
     client_params: Optional[Dict[str, Any]] = None
-    batch_size: int = 50
+    batch_size: int = 8
     max_retries: int = 2
 
 
@@ -52,7 +52,7 @@ async def ingest_and_index(
     siliconflow_api_token: Optional[str] = Form(None),
     weaviate_api_key: Optional[str] = Form(None),
     client_params: Optional[str] = Form(None),  # JSON string for client params
-    batch_size: int = Form(50),
+    batch_size: int = Form(8),
     max_retries: int = Form(2),
 ):
     """上传文档→解析持久化→向量化索引，一次完成。

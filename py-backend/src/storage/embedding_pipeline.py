@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 from uuid import UUID, NAMESPACE_DNS, uuid5
-
+from tqdm import tqdm
 from .repositories import DocumentsRepo, ChunksRepo, CollectionsRepo
 from .db import connect
 
@@ -106,7 +106,7 @@ def index_document_chunks(
     docs = _build_docs_payload(doc_id, collection_id, chunks, collection_name=collection_name)
 
     # 批次处理带重试
-    for start in range(0, len(docs), batch_size):
+    for start in tqdm(range(0, len(docs), batch_size)):
         batch_docs = docs[start:start + batch_size]
         texts = [d.get("content", "") for d in batch_docs]
         # 嵌入重试
