@@ -76,6 +76,16 @@ const PolicyLibrary = () => {
     );
   }
 
+  // 新增：上传解析视图
+  if (currentView === 'upload') {
+    const NationalPolicyUpload = React.lazy(() => import('./NationalPolicyUpload'));
+    return (
+      <React.Suspense fallback={<div className="text-center py-12">加载上传解析组件...</div>}>
+        <NationalPolicyUpload onBack={handleBackToList} />
+      </React.Suspense>
+    );
+  }
+
   // 否则显示政策列表
   return (
     <div className="space-y-6">
@@ -109,6 +119,9 @@ const PolicyLibrary = () => {
             <Text type="secondary">
               共找到 {filteredPolicies.length} 个政策文件
             </Text>
+            <Button type="primary" onClick={() => setCurrentView('upload')}>
+              上传解析国家文件
+            </Button>
           </div>
         </Space>
       </Card>

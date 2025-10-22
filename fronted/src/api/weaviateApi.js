@@ -1,5 +1,5 @@
 const BASE_PREFIX = '/api';
-export const TARGET_DATASET_ID = 'policy_documents';
+export const TARGET_DATASET_ID = 'national_policy_documents';
 export const LOCAL_DATASET_ID = 'policy_documents';
 
 // 从文件名提取不带扩展的名称
