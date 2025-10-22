@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Layout, Menu, Typography } from 'antd';
-import { DatabaseOutlined, MenuFoldOutlined, MenuUnfoldOutlined, FileOutlined } from '@ant-design/icons';
+import { DatabaseOutlined, MenuFoldOutlined, MenuUnfoldOutlined, FileOutlined, DiffOutlined } from '@ant-design/icons';
 import PolicyLibrary from './components/PolicyLibrary';
 import LocalPolicyLibrary from './components/LocalPolicyLibrary';
+import PolicyCompare from './components/PolicyCompare';
 import './App.css';
 
 const { Header, Sider, Content } = Layout;
@@ -23,6 +24,11 @@ function App() {
       icon: <FileOutlined />,
       label: '地方政策文件库',
     },
+    {
+      key: '3',
+      icon: <DiffOutlined />,
+      label: '政策文件对比分析',
+    },
   ];
 
   const renderContent = () => {
@@ -31,6 +37,8 @@ function App() {
         return <PolicyLibrary />;
       case '2':
         return <LocalPolicyLibrary />;
+      case '3':
+        return <PolicyCompare />;
       default:
         return <PolicyLibrary />;
     }
@@ -80,7 +88,7 @@ function App() {
       <Layout style={{ marginLeft: collapsed ? 80 : 200, transition: 'margin-left 0.2s' }}>
         <Header className="bg-white shadow-sm px-6 flex items-center">
            <Title level={3} className="mb-0 text-gray-700">
-             {selectedKey === '1' ? '国家政策文件库' : '地方政策文件库'}
+             {selectedKey === '1' ? '国家政策文件库' : selectedKey === '2' ? '地方政策文件库' : '政策文件对比分析'}
            </Title>
          </Header>
 

@@ -27,5 +27,3 @@ dist-ssr
 .env
 .env.*
 .env.local
-
-/docs
