@@ -46,6 +46,27 @@ export async function getLocalPolicyData(fetchSegments = true) {
   return { dataset, documents: docsWithSegments };
 }
 
+// 新增：调用后端对比分析接口
+export async function analyzePolicyComparison({ local_doc_id, national_doc_ids, limit = 2, collection_name }) {
+  if (!local_doc_id) throw new Error('local_doc_id 为必填参数');
+  if (!national_doc_ids || !Array.isArray(national_doc_ids) || national_doc_ids.length === 0) {
+    throw new Error('national_doc_ids 为必填参数');
+  }
+  const url = `${BASE_PREFIX}/compare/analyze`;
+  const payload = { local_doc_id, national_doc_ids, limit };
+  if (collection_name) payload.collection_name = collection_name;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    throw new Error(`政策对比分析失败(${resp.status}): ${text || resp.statusText}`);
+  }
+  return resp.json();
+}
+
 // 将 SQLite 文档数据转换为组件所需格式
 export const transformDifyDataToPolicyFormat = (dataset, documents) => {
   return (documents || []).map((doc, index) => {

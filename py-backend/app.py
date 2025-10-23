@@ -26,7 +26,6 @@ app.include_router(compare_router)
 
 if __name__ == "__main__":
     import uvicorn
-
     uvicorn.run(
         app,
         host="0.0.0.0",

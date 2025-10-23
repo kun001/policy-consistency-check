@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Card, Typography, Space, Button, Select, Switch, Row, Col, Empty, Tag, Divider, Collapse } from 'antd';
+import { Card, Typography, Space, Button, Select, Switch, Row, Col, Empty, Tag, Divider } from 'antd';
 import { DiffOutlined, SyncOutlined, FileTextOutlined } from '@ant-design/icons';
-import { getNationalPolicyData, getLocalPolicyData, transformDifyDataToPolicyFormat, transformLocalDifyDataToPolicyFormat } from '../api/weaivateApi';
+import { getNationalPolicyData, getLocalPolicyData, transformDifyDataToPolicyFormat, transformLocalDifyDataToPolicyFormat, analyzePolicyComparison } from '../api/weaivateApi';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -17,6 +17,7 @@ const PolicyCompare = () => {
   const [selectedClauseId, setSelectedClauseId] = useState(null); // 当前选中的地方条款
   const [expandedKeys, setExpandedKeys] = useState([]); // 左侧折叠面板展开项
   const [loadingLists, setLoadingLists] = useState(false); // 列表加载状态
+  const [generating, setGenerating] = useState(false); // 生成对比结果状态
 
   const [localOptions, setLocalOptions] = useState([]);
   const [nationalOptions, setNationalOptions] = useState([]);
@@ -74,119 +75,49 @@ const PolicyCompare = () => {
     }
   };
 
-  // 占位：模拟后端的对比结果结构
-  const generateMockCompareResults = (loc, nats) => {
-    if (!loc || !nats.length) return [];
-    const mkNat = (docId, idx) => ({
-      docId,
-      clauseId: `${docId}-C${idx}`,
-      title: `国家条款 ${idx}`,
-      excerpt: `国家条款${idx}原文`,
+  // 将后端返回的 clauses 映射为组件使用的结构
+  const mapBackendToUIClauses = (clauses = []) => {
+    return (clauses || []).map((c) => {
+      const titleText = c.local_clause?.slice(0, 18) || c.id || '地方条款';
+      const hasDiff = (c.diff_type || '').trim() !== '无差异';
+      const diffSummary = c.diff_keywords || c.diff_type || '';
+      const nationalClauses = (c.national_clauses || []).map((nc, idx) => ({
+        title: nc.nation_name || `国家条款 ${idx + 1}`,
+        excerpt: nc.clause || '',
+      }));
+      return {
+        id: c.id,
+        title: `地方条款 ${c.id}：${titleText}`,
+        hasDiff,
+        diffSummary,
+        localExcerpt: c.local_clause || '',
+        analysis: c.analysis || (hasDiff ? '' : '与国家条款一致'),
+        nationalClauses,
+      };
     });
-    return [
-      {
-        id: 'L-001',
-        title: '地方条款 1：交易结算与保证金',
-        hasDiff: true,
-        diffSummary: '保证金比例与结算周期存在差异（示例）',
-        localExcerpt: '地方规定：保证金比例为5%，结算周期为月度……',
-        matchedNational: nats.map(n => mkNat(n.value, 1)),
-        analysis: 'AI分析：地方政策在结算周期上更为严格，可能导致现金流压力增大；建议在条款对齐时考虑过渡期与豁免条件。',
-      },
-      {
-        id: 'L-002',
-        title: '地方条款 2：信息披露与报备',
-        hasDiff: true,
-        diffSummary: '披露频次与范围不同（示例）',
-        localExcerpt: '地方规定：每季度披露，并报备至地方交易中心……',
-        matchedNational: nats.map(n => mkNat(n.value, 2)),
-        analysis: 'AI分析：国家要求的披露范围更广，但频次较低；地方要求更频繁。建议统一为季度披露并增加关键指标报备。',
-      },
-      {
-        id: 'L-003',
-        title: '地方条款 3：信用评估与黑名单',
-        hasDiff: false,
-        diffSummary: '与国家条款一致（示例）',
-        localExcerpt: '地方规定：按国家统一信用规则执行业务评估……',
-        matchedNational: nats.map(n => mkNat(n.value, 3)),
-        analysis: 'AI分析：该条款与国家要求一致，无需调整。',
-      },
-      {
-        id: 'L-004',
-        title: '地方条款 4：履约保障与保险',
-        hasDiff: true,
-        diffSummary: '保险类型和触发条件不同（示例）',
-        localExcerpt: '地方规定：支持保函与保险两种形式，触发条件为违约风险评估……',
-        matchedNational: nats.map(n => mkNat(n.value, 4)),
-        analysis: 'AI分析：国家政策对触发条件更严格；建议明确风控阈值并设置豁免条款，降低企业负担。',
-      },
-      {
-        id: 'L-005',
-        title: '地方条款 5：交易申报与变更',
-        hasDiff: true,
-        diffSummary: '申报时限与变更流程不同（示例）',
-        localExcerpt: '地方规定：申报需提前10个工作日，变更需审批……',
-        matchedNational: nats.map(n => mkNat(n.value, 5)),
-        analysis: 'AI分析：建议统一申报提前期至7-10个工作日，并优化变更流程为分级授权审批。',
-      },
-      {
-        id: 'L-006',
-        title: '地方条款 1：交易结算与保证金',
-        hasDiff: true,
-        diffSummary: '保证金比例与结算周期存在差异（示例）',
-        localExcerpt: '地方规定：保证金比例为5%，结算周期为月度……',
-        matchedNational: nats.map(n => mkNat(n.value, 1)),
-        analysis: 'AI分析：地方政策在结算周期上更为严格，可能导致现金流压力增大；建议在条款对齐时考虑过渡期与豁免条件。',
-      },
-      {
-        id: 'L-007',
-        title: '地方条款 2：信息披露与报备',
-        hasDiff: true,
-        diffSummary: '披露频次与范围不同（示例）',
-        localExcerpt: '地方规定：每季度披露，并报备至地方交易中心……',
-        matchedNational: nats.map(n => mkNat(n.value, 2)),
-        analysis: 'AI分析：国家要求的披露范围更广，但频次较低；地方要求更频繁。建议统一为季度披露并增加关键指标报备。',
-      },
-      {
-        id: 'L-008',
-        title: '地方条款 3：信用评估与黑名单',
-        hasDiff: false,
-        diffSummary: '与国家条款一致（示例）',
-        localExcerpt: '地方规定：按国家统一信用规则执行业务评估……',
-        matchedNational: nats.map(n => mkNat(n.value, 3)),
-        analysis: 'AI分析：该条款与国家要求一致，无需调整。',
-      },
-      {
-        id: 'L-009',
-        title: '地方条款 4：履约保障与保险',
-        hasDiff: true,
-        diffSummary: '保险类型和触发条件不同（示例）',
-        localExcerpt: '地方规定：支持保函与保险两种形式，触发条件为违约风险评估……',
-        matchedNational: nats.map(n => mkNat(n.value, 4)),
-        analysis: 'AI分析：国家政策对触发条件更严格；建议明确风控阈值并设置豁免条款，降低企业负担。',
-      },
-      {
-        id: 'L-010',
-        title: '地方条款 5：交易申报与变更',
-        hasDiff: true,
-        diffSummary: '申报时限与变更流程不同（示例）',
-        localExcerpt: '地方规定：申报需提前10个工作日，变更需审批……',
-        matchedNational: nats.map(n => mkNat(n.value, 5)),
-        analysis: 'AI分析：建议统一申报提前期至7-10个工作日，并优化变更流程为分级授权审批。',
-      },
-    ];
   };
 
-  const handleGenerate = () => {
-    const results = generateMockCompareResults(localDoc, nationalDocs).map(c => ({
-      ...c,
-      localFullText: c.localExcerpt ? `${c.localExcerpt}（示例扩展正文，实际接入后替换为全文）` : '（示例：暂无全文，后端接入后显示）',
-    }));
-    setCompareResults(results);
-    const firstId = results[0]?.id || null;
-    setSelectedClauseId(firstId);
-    setExpandedKeys(firstId ? [firstId] : []);
-    setVisibleCount(4);
+  const handleGenerate = async () => {
+    if (!localDoc || nationalDocs.length === 0) return;
+    try {
+      setGenerating(true);
+      const resp = await analyzePolicyComparison({
+        local_doc_id: localDoc.value,
+        national_doc_ids: nationalDocs.map(d => d.value),
+        limit: 2,
+        collection_name: undefined, // 使用后端默认国家集合
+      });
+      const results = mapBackendToUIClauses(resp.clauses || []);
+      setCompareResults(results);
+      const firstId = results[0]?.id || null;
+      setSelectedClauseId(firstId);
+      setExpandedKeys(firstId ? [firstId] : []);
+      setVisibleCount(4);
+    } catch (error) {
+      console.error('生成对比结果失败：', error);
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const renderToolbar = () => (
@@ -229,6 +160,7 @@ const PolicyCompare = () => {
               icon={<DiffOutlined />}
               disabled={!localDoc || nationalDocs.length === 0}
               onClick={handleGenerate}
+              loading={generating}
             >
               生成对比结果
             </Button>
@@ -253,35 +185,24 @@ const PolicyCompare = () => {
         <Empty description="请选择地方政策与至少一个国家政策，并生成对比结果" />
       ) : (
         <>
-          <Collapse
-            activeKey={expandedKeys}
-            onChange={(keys) => {
-              const arr = Array.isArray(keys) ? keys : [keys];
-              setExpandedKeys(arr);
-              const last = arr[arr.length - 1] || null;
-              if (last) setSelectedClauseId(last);
-              if (rightPanelRef.current) {
-                rightPanelRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-              }
-            }}
-          >
-            {filteredClauses.map((item) => (
-              <Collapse.Panel
-                header={(
-                  <Space>
-                    <Text strong>{item.title}</Text>
-                    {item.hasDiff ? <Tag color="red">存在差异</Tag> : <Tag>无差异</Tag>}
-                  </Space>
-                )}
-                key={item.id}
-                extra={<Text type="secondary">{item.diffSummary}</Text>}
-              >
-                <Paragraph style={{ marginBottom: 0 }}>
-                  {item.localFullText || item.localExcerpt}
-                </Paragraph>
-              </Collapse.Panel>
-            ))}
-          </Collapse>
+          {/* <Divider orientation="left">对比条款列表</Divider> */}
+          <div>
+            {filteredClauses.length === 0 ? (
+              <Empty description="暂无对比结果，点击上方生成按钮" />
+            ) : null}
+          </div>
+          {/* 使用简单列表替代原折叠面板以展示映射后的标题与摘要 */}
+          {filteredClauses.map((item) => (
+            <Card key={item.id} className="mb-3" onClick={() => handleClauseClick(item)} hoverable>
+              <Space>
+                <Text strong>{item.title}</Text>
+                {item.hasDiff ? <Tag color="red">存在差异</Tag> : <Tag>无差异</Tag>}
+              </Space>
+              <Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
+                {item.diffSummary}
+              </Paragraph>
+            </Card>
+          ))}
           {compareResults.length > filteredClauses.length && (
             <div className="flex justify-center mt-4">
               <Space>
@@ -297,40 +218,29 @@ const PolicyCompare = () => {
   const renderRightPanel = () => (
     <Card title="国家政策映射与AI分析" style={{ height: PANEL_HEIGHT, overflowY: 'auto' }}>
       {!selectedClause ? (
-        <Empty description="点击左侧存在差异的地方条款查看对应国家条款与分析" />
+        <Empty description="点击左侧条款查看对应国家条款与分析" />
       ) : (
         <div ref={rightPanelRef}>
-          <Divider orientation="left">AI 分析</Divider>
+          {/* <Divider orientation="left">AI 分析</Divider> */}
           <Card type="inner" title={<Space><FileTextOutlined /><span>AI 分析结论</span></Space>} className="mb-4">
             <Paragraph style={{ marginBottom: 0 }}>
               {selectedClause.analysis}
             </Paragraph>
           </Card>
 
-          <Divider orientation="left">国家政策匹配条款</Divider>
+          {/* <Divider orientation="left">国家政策匹配条款</Divider> */}
 
-          {nationalDocs.map(nDoc => {
-            const match = (selectedClause.matchedNational || []).find(m => m.docId === nDoc.value);
-            return (
-              <Card
-                key={nDoc.value}
-                type="inner"
-                title={`${nDoc.label}`}
-                className="mb-3"
-              >
-                {match ? (
-                  <>
-                    <Title level={5} style={{ marginTop: 0 }}>{match.title}</Title>
-                    <Paragraph style={{ marginBottom: 0 }}>{match.excerpt}</Paragraph>
-                  </>
-                ) : (
-                  <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                    未找到与该地方条款对应的国家条款（占位）
-                  </Paragraph>
-                )}
-              </Card>
-            );
-          })}
+          {(selectedClause.nationalClauses || []).map((nc, idx) => (
+            <Card key={`${selectedClause.id}-${idx}`} type="inner" title={nc.title} className="mb-3">
+              <Paragraph style={{ marginBottom: 0 }}>{nc.excerpt || '（暂无条款内容）'}</Paragraph>
+            </Card>
+          ))}
+
+          {(selectedClause.nationalClauses || []).length === 0 && (
+            <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+              未找到与该地方条款对应的国家条款
+            </Paragraph>
+          )}
         </div>
       )}
     </Card>
