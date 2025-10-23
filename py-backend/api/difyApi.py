@@ -189,4 +189,38 @@ def dify_get_keywords(file_name:str="",file_content:str=""):
         print(f"获取政策关键信息失败: {str(e)}")
         return None
 
-# dify知识库操作：
+def get_diff_analysis_result(file_name: str, file_content: str, segment: str, nations_segments: str):
+    """
+    调用 Dify 工作流，获取具体的大模型格式分析结果。
+    """
+    api_token = "app-Zygp7I4BXi63EAD9dSXkphE6"
+
+    try:
+        payload = {
+            "inputs": {
+                "local_file": file_name or "",
+                "local_segment": segment or "",
+                "local_file_content": file_content or "",
+                "nations_segments": nations_segments or "",
+            },
+            "response_mode": "blocking",
+            "user": "user-ww",
+        }
+
+        result = run_workflow(
+            data=payload,
+            workflow_run_url=WORKFLOW_RUN_URL,
+            dify_api_key=api_token,
+            response_mode="blocking",
+        )
+
+        data = result.get("data", {}) if isinstance(result, dict) else {}
+        if data.get("status") == "succeeded":
+            outputs = data.get("outputs", {})
+            return outputs.get("result")
+        else:
+            # 返回 None 表示失败或未就绪
+            return None
+    except Exception as e:
+        print(f"获取差异分析结果失败: {str(e)}")
+        return None

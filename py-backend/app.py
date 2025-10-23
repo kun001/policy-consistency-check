@@ -1,19 +1,8 @@
-from typing import Any, Dict, Optional
-
-import os
-import shutil
-import tempfile
-
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from api.difyApi import dify_get_file_content
-from api.embeddingApi import DEFAULT_EMBEDDING_MODEL, get_embeddings_from_siliconflow
+from fastapi import FastAPI
 from router.weaviate import router as weaviate_router
 from router.rag import router as rag_router
-from src.doc_structure_recognition import build_segments_struct, format_segments_output
-from src.pydantic_models import *
-from src.utils import build_toc, save_segments2csv
+from router.compare import router as compare_router
 from src.storage import init_storage_and_db
-from src.storage import persist_parsed_document
 
 DEFAULT_SILICONFLOW_API_TOKEN = "sk-dybroxxstjaxkyrnevsqdjikzardzzsppbvwbmimrflpoyfj"
 DEFAULT_OUTPUT_DIR = "E:/MyProjects/policy-consistency-check/py-backend/output"
@@ -32,6 +21,7 @@ async def _startup_init():
 
 app.include_router(weaviate_router)
 app.include_router(rag_router)
+app.include_router(compare_router)
 
 
 if __name__ == "__main__":

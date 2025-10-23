@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, List, Typography, Tag, Space, Input, Select, Spin, Empty, Button, message } from 'antd';
 import { SearchOutlined, FileTextOutlined, CalendarOutlined, TagOutlined } from '@ant-design/icons';
-import { getLocalPolicyData, transformLocalDifyDataToPolicyFormat } from '../api/weaviateApi';
+import { getLocalPolicyData, transformLocalDifyDataToPolicyFormat } from '../api/weaivateApi';
 import PolicyDetail from './PolicyDetail';
 
 const { Title, Text, Paragraph } = Typography;

@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Card, Typography, Space, Button, Select, Switch, Row, Col, Empty, Tag, Divider, Collapse } from 'antd';
 import { DiffOutlined, SyncOutlined, FileTextOutlined } from '@ant-design/icons';
+import { getNationalPolicyData, getLocalPolicyData, transformDifyDataToPolicyFormat, transformLocalDifyDataToPolicyFormat } from '../api/weaivateApi';
 
 const { Title, Text, Paragraph } = Typography;
-const { Option } = Select;
 
 // 政策文件对比分析（一对多）：左侧地方条款列表，右侧国家条款映射 + AI 分析
 const PANEL_HEIGHT = 'calc(100vh - 260px)';
@@ -16,19 +16,63 @@ const PolicyCompare = () => {
   const [compareResults, setCompareResults] = useState([]); // 后端返回的对比结果（按地方条款粒度）
   const [selectedClauseId, setSelectedClauseId] = useState(null); // 当前选中的地方条款
   const [expandedKeys, setExpandedKeys] = useState([]); // 左侧折叠面板展开项
+  const [loadingLists, setLoadingLists] = useState(false); // 列表加载状态
+
+  const [localOptions, setLocalOptions] = useState([]);
+  const [nationalOptions, setNationalOptions] = useState([]);
 
   const rightPanelRef = useRef(null);
 
-  // 示例选项（占位，后续接入真实列表）
-  const localOptions = [
-    { value: 'loc-001', label: '地方政策示例一（深圳）' },
-    { value: 'loc-002', label: '地方政策示例二（杭州）' },
-  ];
-  const nationalOptions = [
-    { value: 'nat-001', label: '国家政策示例一（2024）' },
-    { value: 'nat-002', label: '国家政策示例二（2025）' },
-    { value: 'nat-003', label: '国家政策示例三（能源）' },
-  ];
+  // 真实数据获取：加载地方与国家政策文件列表
+  const loadPolicyLists = async () => {
+    try {
+      setLoadingLists(true);
+      const [localResp, nationalResp] = await Promise.all([
+        getLocalPolicyData(false), // 只拉列表
+        getNationalPolicyData(),
+      ]);
+
+      const localPolicies = transformLocalDifyDataToPolicyFormat(localResp.dataset, localResp.documents);
+      const nationalPolicies = transformDifyDataToPolicyFormat(nationalResp.dataset, nationalResp.documents);
+
+      setLocalOptions(localPolicies.map(p => ({ value: p.id, label: p.title })));
+      setNationalOptions(nationalPolicies.map(p => ({ value: p.id, label: p.title })));
+    } catch (error) {
+      console.error('加载政策文件列表失败：', error);
+    } finally {
+      setLoadingLists(false);
+    }
+  };
+
+  // 初始化加载一次
+  useEffect(() => {
+    loadPolicyLists();
+  }, []);
+
+  // 选择变化时，清空结果与选中条款
+  useEffect(() => {
+    setCompareResults([]);
+    setSelectedClauseId(null);
+    setVisibleCount(4);
+  }, [localDoc, nationalDocs]);
+
+  const filteredClauses = useMemo(() => {
+    let list = compareResults;
+    if (showOnlyDiff) list = list.filter(c => c.hasDiff);
+    return list.slice(0, visibleCount);
+  }, [compareResults, showOnlyDiff, visibleCount]);
+
+  const selectedClause = useMemo(() => (
+    compareResults.find(c => c.id === selectedClauseId)
+  ), [compareResults, selectedClauseId]);
+
+  const handleClauseClick = (clause) => {
+    setSelectedClauseId(clause.id);
+    // 右侧面板滚动置顶，模拟“跳转”效果
+    if (rightPanelRef.current) {
+      rightPanelRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   // 占位：模拟后端的对比结果结构
   const generateMockCompareResults = (loc, nats) => {
@@ -37,7 +81,7 @@ const PolicyCompare = () => {
       docId,
       clauseId: `${docId}-C${idx}`,
       title: `国家条款 ${idx}`,
-      excerpt: `（摘要）与地方条款存在差异点示例 ${idx}`,
+      excerpt: `国家条款${idx}原文`,
     });
     return [
       {
@@ -133,31 +177,6 @@ const PolicyCompare = () => {
     ];
   };
 
-  // 选择变化时，清空结果与选中条款
-  useEffect(() => {
-    setCompareResults([]);
-    setSelectedClauseId(null);
-    setVisibleCount(4);
-  }, [localDoc, nationalDocs]);
-
-  const filteredClauses = useMemo(() => {
-    let list = compareResults;
-    if (showOnlyDiff) list = list.filter(c => c.hasDiff);
-    return list.slice(0, visibleCount);
-  }, [compareResults, showOnlyDiff, visibleCount]);
-
-  const selectedClause = useMemo(() => (
-    compareResults.find(c => c.id === selectedClauseId)
-  ), [compareResults, selectedClauseId]);
-
-  const handleClauseClick = (clause) => {
-    setSelectedClauseId(clause.id);
-    // 右侧面板滚动置顶，模拟“跳转”效果
-    if (rightPanelRef.current) {
-      rightPanelRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
-
   const handleGenerate = () => {
     const results = generateMockCompareResults(localDoc, nationalDocs).map(c => ({
       ...c,
@@ -181,16 +200,14 @@ const PolicyCompare = () => {
                 placeholder="选择地方政策文件"
                 style={{ width: 280 }}
                 value={localDoc?.value}
-                onChange={(v, o) => setLocalDoc(o)}
+                onChange={(v, option) => setLocalDoc(option)}
                 allowClear
-              >
-                {localOptions.map(opt => (
-                  <Option key={opt.value} value={opt.value}>{opt.label}</Option>
-                ))}
-              </Select>
+                loading={loadingLists}
+                options={localOptions}
+              />
             </Space>
             <Space>
-              <Text type="secondary">选择国家政策（可多选）：</Text>
+              <Text type="secondary">选择国家对比政策（可多选）：</Text>
               <Select
                 mode="multiple"
                 placeholder="选择一个或多个国家政策文件"
@@ -198,15 +215,13 @@ const PolicyCompare = () => {
                 value={nationalDocs.map(d => d.value)}
                 onChange={(values, options) => setNationalDocs(options)}
                 allowClear
-              >
-                {nationalOptions.map(opt => (
-                  <Option key={opt.value} value={opt.value}>{opt.label}</Option>
-                ))}
-              </Select>
+                loading={loadingLists}
+                options={nationalOptions}
+              />
             </Space>
           </Space>
           <Space>
-            <Button icon={<SyncOutlined />} onClick={() => { /* 占位：刷新列表 */ }}>
+            <Button icon={<SyncOutlined />} onClick={() => { loadPolicyLists(); }} loading={loadingLists}>
               刷新列表
             </Button>
             <Button
@@ -289,12 +304,6 @@ const PolicyCompare = () => {
           <Card type="inner" title={<Space><FileTextOutlined /><span>AI 分析结论</span></Space>} className="mb-4">
             <Paragraph style={{ marginBottom: 0 }}>
               {selectedClause.analysis}
-            </Paragraph>
-          </Card>
-
-          <Card type="inner" title="地方条款（摘要）" className="mb-4">
-            <Paragraph style={{ marginBottom: 0 }}>
-              {selectedClause.localExcerpt}
             </Paragraph>
           </Card>
 
