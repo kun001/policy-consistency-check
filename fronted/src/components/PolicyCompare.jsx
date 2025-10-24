@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Card, Typography, Space, Button, Select, Switch, Row, Col, Empty, Tag, Divider } from 'antd';
 import { DiffOutlined, SyncOutlined, FileTextOutlined } from '@ant-design/icons';
-import { getNationalPolicyData, getLocalPolicyData, transformDifyDataToPolicyFormat, transformLocalDifyDataToPolicyFormat, analyzePolicyComparison } from '../api/weaivateApi';
+import { getNationalPolicyData, getLocalPolicyData, transformNationalPolicyData, transformLocalPolicyData, analyzePolicyComparison } from '../api/weaivateApi';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -15,7 +15,7 @@ const PolicyCompare = () => {
   const [visibleCount, setVisibleCount] = useState(4); // 默认展示4条
   const [compareResults, setCompareResults] = useState([]); // 后端返回的对比结果（按地方条款粒度）
   const [selectedClauseId, setSelectedClauseId] = useState(null); // 当前选中的地方条款
-  const [expandedKeys, setExpandedKeys] = useState([]); // 左侧折叠面板展开项
+  // const [expandedKeys, setExpandedKeys] = useState([]);
   const [loadingLists, setLoadingLists] = useState(false); // 列表加载状态
   const [generating, setGenerating] = useState(false); // 生成对比结果状态
   const [expandedExcerpts, setExpandedExcerpts] = useState(new Set()); // 左侧条款的缩略与展开
@@ -33,8 +33,8 @@ const PolicyCompare = () => {
         getNationalPolicyData(),
       ]);
 
-      const localPolicies = transformLocalDifyDataToPolicyFormat(localResp.dataset, localResp.documents);
-      const nationalPolicies = transformDifyDataToPolicyFormat(nationalResp.dataset, nationalResp.documents);
+      const localPolicies = transformLocalPolicyData(localResp.dataset, localResp.documents);
+      const nationalPolicies = transformNationalPolicyData(nationalResp.dataset, nationalResp.documents);
 
       setLocalOptions(localPolicies.map(p => ({ value: p.id, label: p.title })));
       setNationalOptions(nationalPolicies.map(p => ({ value: p.id, label: p.title })));
@@ -112,7 +112,7 @@ const PolicyCompare = () => {
       setCompareResults(results);
       const firstId = results[0]?.id || null;
       setSelectedClauseId(firstId);
-      setExpandedKeys(firstId ? [firstId] : []);
+      // setExpandedKeys(firstId ? [firstId] : []);
       setVisibleCount(4);
     } catch (error) {
       console.error('生成对比结果失败：', error);

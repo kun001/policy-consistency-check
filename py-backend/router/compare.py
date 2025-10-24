@@ -7,7 +7,8 @@ from tqdm import tqdm
 from api.weaivateApi import (
     weaviate_search
 )
-from api.difyApi import get_diff_analysis_result
+# 已移除的旧集成
+from src.agents.policy_agents import get_worklow_analysis_result
 from src.storage import connect, DocumentsRepo, ChunksRepo
 from src.storage.db import get_storage_root
 from pathlib import Path
@@ -57,7 +58,7 @@ def _read_local_content(doc_id: str, doc: Dict[str, Any]) -> str:
 @router.post("/analyze")
 async def analyze(payload: CompareRequest):
     """
-    针对每个地方条款（chunk），在 Weaviate 中检索相关国家条款，调用 Dify 工作流进行差异分析
+    针对每个地方条款（chunk），在 Weaviate 中检索相关国家条款，调用内部工作流进行差异分析
     """
     if not payload.local_doc_id:
         raise HTTPException(status_code=400, detail="local_doc_id 为必填参数")
@@ -103,7 +104,7 @@ async def analyze(payload: CompareRequest):
         # 取前 N 条
         filtered = filtered[: payload.limit]
 
-        # 提供给 Dify 的国家条款原文列表（包含国家文件名与条款）
+        # 提供给分析工作流的国家条款原文列表（包含国家文件名与条款）
         nid_set = {str(r.get("metadata", {}).get("doc_id")) for r in filtered}
         nation_docs: Dict[str, str] = {}
         for nid in nid_set:
@@ -118,8 +119,15 @@ async def analyze(payload: CompareRequest):
             for r in filtered
         ]
 
-        # 2) 调用 Dify 工作流进行差异分析
-        diff_raw = get_diff_analysis_result(
+        # 2) 调用内部工作流进行差异分析
+        # diff_raw = get_diff_analysis_result(
+        #     file_name=local_file_name,
+        #     file_content=local_file_content,
+        #     segment=local_clause_text,
+        #     nations_segments=str(nations_segments),
+        # )
+
+        diff_raw = await get_worklow_analysis_result(
             file_name=local_file_name,
             file_content=local_file_content,
             segment=local_clause_text,

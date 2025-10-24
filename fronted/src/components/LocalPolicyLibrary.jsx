@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, List, Typography, Tag, Space, Input, Select, Spin, Empty, Button, message } from 'antd';
 import { SearchOutlined, FileTextOutlined, CalendarOutlined, TagOutlined } from '@ant-design/icons';
-import { getLocalPolicyData, transformLocalDifyDataToPolicyFormat } from '../api/weaivateApi';
+import { getLocalPolicyData, transformLocalPolicyData } from '../api/weaivateApi';
 import PolicyDetail from './PolicyDetail';
 
 const { Title, Text, Paragraph } = Typography;
@@ -27,7 +27,7 @@ const LocalPolicyLibrary = () => {
       
       const { dataset, documents } = await getLocalPolicyData();
       console.log(dataset)
-      const transformedPolicies = transformLocalDifyDataToPolicyFormat(dataset, documents);
+      const transformedPolicies = transformLocalPolicyData(dataset, documents);
 
       setPolicies(transformedPolicies);
       

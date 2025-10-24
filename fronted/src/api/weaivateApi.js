@@ -68,7 +68,7 @@ export async function analyzePolicyComparison({ local_doc_id, national_doc_ids, 
 }
 
 // 将 SQLite 文档数据转换为组件所需格式
-export const transformDifyDataToPolicyFormat = (dataset, documents) => {
+export const transformNationalPolicyData = (dataset, documents) => {
   return (documents || []).map((doc, index) => {
     const fileName = doc.source_filename || `政策文件 ${index + 1}`;
     const fileNameWithoutExt = stripExt(fileName);
@@ -124,8 +124,8 @@ export const transformDifyDataToPolicyFormat = (dataset, documents) => {
   });
 };
 
-// 地方政策的转换（兼容原 transformLocalDifyDataToPolicyFormat 名称）
-export const transformLocalDifyDataToPolicyFormat = (dataset, documents) => {
+// 地方政策的转换
+export const transformLocalPolicyData = (dataset, documents) => {
   return (documents || []).map((doc, index) => {
     const fileName = doc.source_filename || `地方政策文件 ${index + 1}`;
     const fileNameWithoutExt = stripExt(fileName);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, List, Typography, Tag, Space, Input, Select, Spin, Empty, Button, message } from 'antd';
 import { SearchOutlined, FileTextOutlined, CalendarOutlined, TagOutlined } from '@ant-design/icons';
-import { getNationalPolicyData, transformDifyDataToPolicyFormat } from '../api/weaivateApi';
+import { getNationalPolicyData, transformNationalPolicyData } from '../api/weaivateApi';
 import PolicyDetail from './PolicyDetail';
 
 const { Title, Text, Paragraph } = Typography;
@@ -24,7 +24,7 @@ const PolicyLibrary = () => {
       setError(null);
       
       const { dataset, documents } = await getNationalPolicyData();
-      const transformedPolicies = transformDifyDataToPolicyFormat(dataset, documents);
+      const transformedPolicies = transformNationalPolicyData(dataset, documents);
       
       setPolicies(transformedPolicies);
       

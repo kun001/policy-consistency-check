@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, Query
 from pydantic import BaseModel
 
-from api.difyApi import dify_get_file_content
+from api.zhipuApi import zhipu_get_file_content
 from api.weaivateApi import (
     DEFAULT_COLLECTION_NAME,
     DEFAULT_SILICONFLOW_API_TOKEN,
@@ -56,7 +56,6 @@ async def ingest_and_index(
     max_retries: int = Form(2),
 ):
     """上传文档→解析持久化→向量化索引，一次完成。
-
     返回：{
       success, doc_id, collection_id, storage, chunk_count,
       embedding_stats: {attempted, uploaded, failed}
@@ -77,9 +76,10 @@ async def ingest_and_index(
             temp_file_path = temp_file.name
             shutil.copyfileobj(file.file, temp_file)
 
-        file_content, key_words = dify_get_file_content(temp_file_path)
+        file_content = zhipu_get_file_content(temp_file_path)
+        key_words = ""
         if not file_content:
-            raise HTTPException(status_code=500, detail="文档内容提取失败，请检查文件格式或 Dify 服务状态。")
+            raise HTTPException(status_code=500, detail="文档内容提取失败，请检查文件格式或内容提取服务状态。")
 
         file_struct = build_segments_struct(file_content=file_content, file_name=file.filename)
         segments = file_struct.get("segments", [])
