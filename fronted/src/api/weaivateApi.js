@@ -46,7 +46,7 @@ export async function getLocalPolicyData(fetchSegments = true) {
   return { dataset, documents: docsWithSegments };
 }
 
-// 新增：调用后端对比分析接口
+// 调用后端对比分析接口
 export async function analyzePolicyComparison({ local_doc_id, national_doc_ids, limit = 2, collection_name }) {
   if (!local_doc_id) throw new Error('local_doc_id 为必填参数');
   if (!national_doc_ids || !Array.isArray(national_doc_ids) || national_doc_ids.length === 0) {

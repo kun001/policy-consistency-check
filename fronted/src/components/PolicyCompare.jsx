@@ -18,7 +18,7 @@ const PolicyCompare = () => {
   const [expandedKeys, setExpandedKeys] = useState([]); // 左侧折叠面板展开项
   const [loadingLists, setLoadingLists] = useState(false); // 列表加载状态
   const [generating, setGenerating] = useState(false); // 生成对比结果状态
-
+  const [expandedExcerpts, setExpandedExcerpts] = useState(new Set()); // 左侧条款的缩略与展开
   const [localOptions, setLocalOptions] = useState([]);
   const [nationalOptions, setNationalOptions] = useState([]);
 
@@ -78,18 +78,19 @@ const PolicyCompare = () => {
   // 将后端返回的 clauses 映射为组件使用的结构
   const mapBackendToUIClauses = (clauses = []) => {
     return (clauses || []).map((c) => {
-      const titleText = c.local_clause?.slice(0, 18) || c.id || '地方条款';
-      const hasDiff = (c.diff_type || '').trim() !== '无差异';
-      const diffSummary = c.diff_keywords || c.diff_type || '';
+      const titleText = c.local_clause_title || '地方条款'
+      const diffType = String(c.diff_type ?? '');
+      const hasDiff = ['缺失','超越范围','冲突'].some(tag => diffType.includes(tag));
+      const diffKeywords = c.diff_keywords || '';
       const nationalClauses = (c.national_clauses || []).map((nc, idx) => ({
         title: nc.nation_name || `国家条款 ${idx + 1}`,
         excerpt: nc.clause || '',
       }));
       return {
         id: c.id,
-        title: `地方条款 ${c.id}：${titleText}`,
+        title: `${titleText}：${diffKeywords}`,
+        diffType,
         hasDiff,
-        diffSummary,
         localExcerpt: c.local_clause || '',
         analysis: c.analysis || (hasDiff ? '' : '与国家条款一致'),
         nationalClauses,
@@ -104,8 +105,8 @@ const PolicyCompare = () => {
       const resp = await analyzePolicyComparison({
         local_doc_id: localDoc.value,
         national_doc_ids: nationalDocs.map(d => d.value),
-        limit: 2,
-        collection_name: undefined, // 使用后端默认国家集合
+        limit: 20,
+        collection_name: undefined, // 默认国家集合
       });
       const results = mapBackendToUIClauses(resp.clauses || []);
       setCompareResults(results);
@@ -179,30 +180,58 @@ const PolicyCompare = () => {
     </Card>
   );
 
+  // 切换某条款的展开状态
+  const toggleExcerpt = (id) => {
+    setExpandedExcerpts((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const renderLeftPanel = () => (
     <Card title="地方政策条款" style={{ height: PANEL_HEIGHT, overflowY: 'auto' }}>
       {!localDoc || nationalDocs.length === 0 ? (
         <Empty description="请选择地方政策与至少一个国家政策，并生成对比结果" />
       ) : (
         <>
-          {/* <Divider orientation="left">对比条款列表</Divider> */}
           <div>
             {filteredClauses.length === 0 ? (
               <Empty description="暂无对比结果，点击上方生成按钮" />
             ) : null}
           </div>
           {/* 使用简单列表替代原折叠面板以展示映射后的标题与摘要 */}
-          {filteredClauses.map((item) => (
-            <Card key={item.id} className="mb-3" onClick={() => handleClauseClick(item)} hoverable>
-              <Space>
-                <Text strong>{item.title}</Text>
-                {item.hasDiff ? <Tag color="red">存在差异</Tag> : <Tag>无差异</Tag>}
-              </Space>
-              <Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
-                {item.diffSummary}
-              </Paragraph>
-            </Card>
-          ))}
+          {filteredClauses.map((item) => {
+            const fullText = item.localExcerpt || '';
+            const isLong = fullText.length > 100;
+            const isExpanded = expandedExcerpts.has(item.id);
+            const displayText = isLong && !isExpanded ? `${fullText.slice(0, 100)}...` : fullText;
+
+            return (
+              <Card key={item.id} className="mb-3" onClick={() => handleClauseClick(item)} hoverable>
+                <Space>
+                  <Text strong>{item.title}</Text>
+                  {item.hasDiff ? <Tag color="red">存在差异</Tag> : <Tag>无差异</Tag>}
+                </Space>
+                <Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
+                  {displayText}
+                  {isLong && (
+                    <Button
+                      type="link"
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation(); // 不触发卡片点击，右侧面板交互保持不变
+                        toggleExcerpt(item.id);
+                      }}
+                    >
+                      {isExpanded ? '收起' : '展开'}
+                    </Button>
+                  )}
+                </Paragraph>
+              </Card>
+            );
+          })}
           {compareResults.length > filteredClauses.length && (
             <div className="flex justify-center mt-4">
               <Space>
@@ -221,15 +250,11 @@ const PolicyCompare = () => {
         <Empty description="点击左侧条款查看对应国家条款与分析" />
       ) : (
         <div ref={rightPanelRef}>
-          {/* <Divider orientation="left">AI 分析</Divider> */}
           <Card type="inner" title={<Space><FileTextOutlined /><span>AI 分析结论</span></Space>} className="mb-4">
             <Paragraph style={{ marginBottom: 0 }}>
               {selectedClause.analysis}
             </Paragraph>
           </Card>
-
-          {/* <Divider orientation="left">国家政策匹配条款</Divider> */}
-
           {(selectedClause.nationalClauses || []).map((nc, idx) => (
             <Card key={`${selectedClause.id}-${idx}`} type="inner" title={nc.title} className="mb-3">
               <Paragraph style={{ marginBottom: 0 }}>{nc.excerpt || '（暂无条款内容）'}</Paragraph>

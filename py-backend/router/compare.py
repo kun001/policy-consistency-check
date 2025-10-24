@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 from typing import Any, Dict, List, Optional
 import json
 from fastapi import APIRouter, HTTPException
@@ -12,6 +11,8 @@ from api.difyApi import get_diff_analysis_result
 from src.storage import connect, DocumentsRepo, ChunksRepo
 from src.storage.db import get_storage_root
 from pathlib import Path
+
+import re
 
 NATIONAL_DEFAULT_COLLECTION_NAME = "national_policy_documents"
 
@@ -86,6 +87,7 @@ async def analyze(payload: CompareRequest):
         local_clause_text = ch.get("content") or ""
         chunk_index = int(ch.get("chunk_index") or 0)
         clause_id = f"L-{chunk_index:03d}"
+        clause_title = " ".join(ch.get("section_path",[])) + " " + ch.get("title",f"第{chunk_index}条")
 
         # 1) 在 Weaviate 中检索相似国家条款
         search_results = weaviate_search(
@@ -134,6 +136,10 @@ async def analyze(payload: CompareRequest):
         if isinstance(diff_raw, dict):
             parsed = diff_raw
         elif isinstance(diff_raw, str):
+            text_res = diff_raw.strip()
+            m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text_res, flags=re.IGNORECASE)
+            if m:
+                diff_raw = m.group(1).strip()
             try:
                 parsed = json.loads(diff_raw)
             except Exception:
@@ -166,10 +172,11 @@ async def analyze(payload: CompareRequest):
 
         clauses.append({
             "id": clause_id,
+            "local_clause_title": clause_title,
             "local_clause": local_clause_text,
             "diff_type": diff_type,
-            "diff_keywords": diff_keywords or ("无差异" if diff_type == "无差异" else ""),
-            "analysis": analysis_text or ("与国家条款一致" if diff_type == "无差异" else ""),
+            "diff_keywords": diff_keywords,
+            "analysis": analysis_text,
             "national_clauses": national_clauses,
         })
 
