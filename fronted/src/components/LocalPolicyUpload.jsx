@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Card, Typography, Space, Button, Upload, message, Tag } from 'antd';
 import { ArrowLeftOutlined, UploadOutlined, FileTextOutlined, DownOutlined, UpOutlined } from '@ant-design/icons';
 import { ingestAndIndex, getParsedDocument } from '../api/backendApi';
+import { LOCAL_DATASET_ID } from '../api/weaivateApi';
 import TocViewer from './TocViewer';
 
 const { Title, Paragraph, Text } = Typography;
@@ -41,8 +42,8 @@ const LocalPolicyUpload = ({ onBack }) => {
       setStructured(null);
       setSelectedArticle('');
 
-      // 一次性上传并完成解析+切分+向量化+持久化
-      const ingest = await ingestAndIndex(file, { batch_size: 8, max_retries: 2 });
+      // 一次性上传并完成解析+切分+向量化+持久化（明确集合名）
+      const ingest = await ingestAndIndex(file, { collection_name: LOCAL_DATASET_ID, batch_size: 8, max_retries: 2 });
       setResponseText(JSON.stringify(ingest, null, 2));
       message.success('上传并索引完成');
 

@@ -36,7 +36,7 @@ async def get_worklow_analysis_result(file_name:str, file_content:str, segment:s
 注意：不要输出无关的国家条款！仅列出与当前地方条款内容实质相似的条款。不存在相似的国家条款，则置为空列表。
     """
 
-    input = {
+    inputs = {
         "地方政策文件":file_name,
         "地方政策条款":segment,
         "检索到的相似国家政策条款":nations_segments,
@@ -44,20 +44,21 @@ async def get_worklow_analysis_result(file_name:str, file_content:str, segment:s
     }
     
     agent.set_agent_prompt("system", system_prompt)
-    agent.request.set_prompt("input", input)
-    result = await agent.output(
-        {
-            "差异类型": "缺失、冲突、超越范围、细化、无差异、无法比较（可多选），String",
-            "差异描述": "根据差异类型的选择生成相应的差异描述。缺失需列明国家原文要求；冲突需说明矛盾点；超越需指出无依据的新增内容。String",
-            "差异关键词": "从该差异描述中提取一个或两个关键词，如（交易结算与保证金）、（信息披露与报备）、（交易申报）等等。String",
-            "相似国家条款": [
-                {
-                    "国家政策文件": "国家文件名称。String",
-                    "国家政策条款": "国家政策原文（必须来自输入），需输出完整的国家条款内容。String"
-                }
-            ]
-        }
-    ).async_start()
+    result = await agent \
+            .input(inputs) \
+            .output(
+            {
+                "差异类型": "缺失、冲突、超越范围、细化、无差异、无法比较（可多选），String",
+                "差异描述": "根据差异类型的选择生成相应的差异描述。缺失需列明国家原文要求；冲突需说明矛盾点；超越需指出无依据的新增内容。String",
+                "差异关键词": "从该差异描述中提取一个或两个关键词，如（交易结算与保证金）、（信息披露与报备）、（交易申报）等等。String",
+                "相似国家条款": [
+                    {
+                        "国家政策文件": "国家文件名称。String",
+                        "国家政策条款": "国家政策原文（必须来自输入），需输出完整的国家条款内容。String"
+                    }
+                ]
+            }
+        ).async_start()
 
     if result:
         return result

@@ -1,7 +1,6 @@
 // Python 后端 API 封装
-// 使用 Vite 代理至 http://localhost:10010，避免跨域
-
-const BASE_PREFIX = '/api';
+// 通过统一配置读取基础前缀，开发环境走 Vite 代理避免跨域
+import { BASE_PREFIX } from './config';
 
 // 提交文档，后端一次性完成解析、切分、向量化与持久化
 export async function ingestAndIndex(fileBlob, options = {}) {

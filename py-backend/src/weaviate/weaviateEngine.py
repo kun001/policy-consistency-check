@@ -1,4 +1,4 @@
-﻿"""Utility class for interacting with the Weaviate cluster."""
+"""Utility class for interacting with the Weaviate cluster."""
 
 from __future__ import annotations
 
@@ -15,21 +15,22 @@ import weaviate.classes.config as wc
 from weaviate import WeaviateClient
 from weaviate.auth import AuthApiKey
 from weaviate.classes.query import MetadataQuery
+import weaviate.classes.query as wq
 from weaviate.collections import Collection
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 from api.embeddingApi import get_embeddings_from_siliconflow
-
-
-DEFAULT_WEAVIATE_HTTP_HOST = "115.190.118.177"
-DEFAULT_WEAVIATE_HTTP_PORT = 8080
-DEFAULT_WEAVIATE_HTTP_SECURE = False
-DEFAULT_WEAVIATE_GRPC_HOST = DEFAULT_WEAVIATE_HTTP_HOST
-DEFAULT_WEAVIATE_GRPC_PORT = 50051
-DEFAULT_WEAVIATE_GRPC_SECURE = False
-DEFAULT_WEAVIATE_API_KEY = "key_kunkun"
+from src.settings import (
+    WEAVIATE_HTTP_HOST as DEFAULT_WEAVIATE_HTTP_HOST,
+    WEAVIATE_HTTP_PORT as DEFAULT_WEAVIATE_HTTP_PORT,
+    WEAVIATE_HTTP_SECURE as DEFAULT_WEAVIATE_HTTP_SECURE,
+    WEAVIATE_GRPC_HOST as DEFAULT_WEAVIATE_GRPC_HOST,
+    WEAVIATE_GRPC_PORT as DEFAULT_WEAVIATE_GRPC_PORT,
+    WEAVIATE_GRPC_SECURE as DEFAULT_WEAVIATE_GRPC_SECURE,
+    WEAVIATE_API_KEY as DEFAULT_WEAVIATE_API_KEY,
+)
 
 
 class WeaviateEngine:
@@ -315,25 +316,102 @@ class WeaviateEngine:
         *,
         limit: int = 10,
         filters: Optional[Dict[str, Any]] = None,
+        search_type: str = "hybrid",
+        alpha: Optional[float] = None,
+        fusion_type: Optional[str] = None,
+        max_vector_distance: Optional[float] = None,
+        bm25_properties: Optional[Sequence[str]] = None,
+        bm25_search_operator: Optional[int] = None,
+        vector: Optional[Sequence[float]] = None,
     ) -> List[Dict[str, Any]]:
         if not isinstance(query, str) or not query.strip():
             raise ValueError("query must be a non-empty string")
-
-        vector = self._embed_texts([query])[0]
         collection = self._get_collection()
-
-        metadata_query_kwargs: Dict[str, Any] = {"distance": True}
-        metadata_query = MetadataQuery(**metadata_query_kwargs)
-
-        results = collection.query.near_vector(
-            near_vector=vector,
-            limit=limit,
-            filters=filters,
-            return_properties=["content", "title", "metadata_json"],
-            return_metadata=metadata_query,
-        )
-
+        st = (search_type or "hybrid").lower()
         payloads: List[Dict[str, Any]] = []
+
+        if st == "keyword":
+            meta = wq.MetadataQuery(score=True)
+            kwargs: Dict[str, Any] = {
+                "query": query,
+                "limit": limit,
+                "return_properties": ["content", "title", "metadata_json", "source_id"],
+                "return_metadata": meta,
+            }
+            if filters:
+                kwargs["filters"] = filters
+            if bm25_properties:
+                kwargs["query_properties"] = list(bm25_properties)
+            if bm25_search_operator is not None:
+                kwargs["bm25_search_operator"] = int(bm25_search_operator)
+            results = collection.query.bm25(**kwargs)
+            for obj in results.objects:
+                metadata: Dict[str, Any] = {}
+                metadata_raw = obj.properties.get("metadata_json") if obj.properties else None
+                if isinstance(metadata_raw, str) and metadata_raw:
+                    try:
+                        metadata = json.loads(metadata_raw)
+                    except json.JSONDecodeError:
+                        metadata = {"raw": metadata_raw}
+                payloads.append({
+                    "uuid": str(obj.uuid),
+                    "text": obj.properties.get("content", "") if obj.properties else "",
+                    "title": obj.properties.get("title") if obj.properties else None,
+                    "metadata": metadata,
+                    "source_id": obj.properties.get("source_id") if obj.properties else None,
+                    "_score": getattr(obj.metadata, "score", None),
+                })
+            return payloads
+
+        if st == "vector":
+            vec = list(vector) if vector is not None else self._embed_texts([query])[0]
+            meta = MetadataQuery(distance=True)
+            results = collection.query.near_vector(
+                near_vector=vec,
+                limit=limit,
+                filters=filters,
+                return_properties=["content", "title", "metadata_json", "source_id"],
+                return_metadata=meta,
+            )
+            for obj in results.objects:
+                metadata: Dict[str, Any] = {}
+                metadata_raw = obj.properties.get("metadata_json") if obj.properties else None
+                if isinstance(metadata_raw, str) and metadata_raw:
+                    try:
+                        metadata = json.loads(metadata_raw)
+                    except json.JSONDecodeError:
+                        metadata = {"raw": metadata_raw}
+                payloads.append({
+                    "uuid": str(obj.uuid),
+                    "text": obj.properties.get("content", "") if obj.properties else "",
+                    "title": obj.properties.get("title") if obj.properties else None,
+                    "metadata": metadata,
+                    "source_id": obj.properties.get("source_id") if obj.properties else None,
+                    "_distance": obj.metadata.distance if obj.metadata else None,
+                })
+            return payloads
+
+        # hybrid (default)
+        vec = list(vector) if vector is not None else self._embed_texts([query])[0]
+        meta = wq.MetadataQuery(score=True, distance=True)
+        kwargs: Dict[str, Any] = {
+            "query": query,
+            "limit": limit,
+            "vector": wq.HybridVector.near_vector(vector=vec),
+            "return_properties": ["content", "title", "metadata_json", "source_id"],
+            "return_metadata": meta,
+        }
+        if filters:
+            kwargs["filters"] = filters
+        if alpha is not None:
+            kwargs["alpha"] = float(alpha)
+        if fusion_type:
+            kwargs["fusion_type"] = fusion_type
+        if max_vector_distance is not None:
+            kwargs["max_vector_distance"] = float(max_vector_distance)
+        if bm25_properties:
+            kwargs["query_properties"] = list(bm25_properties)
+        results = collection.query.hybrid(**kwargs)
         for obj in results.objects:
             metadata: Dict[str, Any] = {}
             metadata_raw = obj.properties.get("metadata_json") if obj.properties else None
@@ -342,18 +420,15 @@ class WeaviateEngine:
                     metadata = json.loads(metadata_raw)
                 except json.JSONDecodeError:
                     metadata = {"raw": metadata_raw}
-
-            payloads.append(
-                    {
-                        "uuid": str(obj.uuid),
-                        "text": obj.properties.get("content", "") if obj.properties else "",
-                        "title": obj.properties.get("title") if obj.properties else None,
-                        "metadata": metadata,
-                        "source_id": obj.properties.get("source_id") if obj.properties else None,
-                        "_distance": obj.metadata.distance if obj.metadata else None,
-                    }
-                )
-
+            payloads.append({
+                "uuid": str(obj.uuid),
+                "text": obj.properties.get("content", "") if obj.properties else "",
+                "title": obj.properties.get("title") if obj.properties else None,
+                "metadata": metadata,
+                "source_id": obj.properties.get("source_id") if obj.properties else None,
+                "_distance": getattr(obj.metadata, "distance", None),
+                "_score": getattr(obj.metadata, "score", None),
+            })
         return payloads
 
 

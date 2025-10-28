@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Card, Typography, Space, Button, Upload, message, Tag } from 'antd';
 import { ArrowLeftOutlined, UploadOutlined, FileTextOutlined, DownOutlined, UpOutlined } from '@ant-design/icons';
 import { ingestAndIndex, getParsedDocument } from '../api/backendApi';
+import { TARGET_DATASET_ID } from '../api/weaivateApi';
 import TocViewer from './TocViewer';
 
 const { Title, Paragraph, Text } = Typography;
@@ -15,7 +16,7 @@ const NationalPolicyUpload = ({ onBack }) => {
   const [structured, setStructured] = useState(null); // 后端结构化响应（toc/counts/file）
   const [selectedArticle, setSelectedArticle] = useState('');
 
-  const COLLECTION_NAME = 'national_policy_documents';
+  const COLLECTION_NAME = TARGET_DATASET_ID;
   const PREVIEW_LINES = 8;
 
   const getCollapsedText = (text) => {

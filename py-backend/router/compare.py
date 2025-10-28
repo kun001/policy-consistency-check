@@ -119,14 +119,6 @@ async def analyze(payload: CompareRequest):
             for r in filtered
         ]
 
-        # 2) 调用内部工作流进行差异分析
-        # diff_raw = get_diff_analysis_result(
-        #     file_name=local_file_name,
-        #     file_content=local_file_content,
-        #     segment=local_clause_text,
-        #     nations_segments=str(nations_segments),
-        # )
-
         diff_raw = await get_worklow_analysis_result(
             file_name=local_file_name,
             file_content=local_file_content,

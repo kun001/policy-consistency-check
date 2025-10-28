@@ -1,0 +1,12 @@
+# Runtime dependencies
+fastapi>=0.119.1
+uvicorn>=0.38.0
+pydantic>=2.11.9
+requests>=78.1.1
+python-dotenv>=1.0
+python-multipart>=0.0.20
+tqdm>=4.67.1
+
+# Weaviate client (HTTP + gRPC)
+weaviate-client>=4.16.10
+grpcio>=1.75.0

@@ -5,10 +5,11 @@ import json
 from typing import Optional, Union, Dict, Any
 import requests
 # 警告：生产环境不要把 Token 暴露到前端，建议通过后端调用或代理。
-
-ZHIPU_UPLOAD_URL = "https://open.bigmodel.cn/api/paas/v4/files/parser/create?file"
-ZHIPU_RESULT_BASE = "https://open.bigmodel.cn/api/paas/v4/files/parser/result"
-DEFAULT_ZHIPU_API_TOKEN = "0b85869d46624981bcf282c08425132d.nCgWxCcKe3TrOwkW"
+from src.settings import (
+    ZHIPU_UPLOAD_URL,
+    ZHIPU_RESULT_BASE,
+    ZHIPU_API_TOKEN as DEFAULT_ZHIPU_API_TOKEN,
+)
 
 def _detect_file_type(file_path: Union[str, os.PathLike]) -> str:
     """

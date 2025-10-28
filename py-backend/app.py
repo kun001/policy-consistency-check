@@ -3,9 +3,13 @@ from router.weaviate import router as weaviate_router
 from router.rag import router as rag_router
 from router.compare import router as compare_router
 from src.storage import init_storage_and_db
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
+from src.settings import APP_HOST, APP_PORT
 
-DEFAULT_SILICONFLOW_API_TOKEN = "sk-dybroxxstjaxkyrnevsqdjikzardzzsppbvwbmimrflpoyfj"
-DEFAULT_OUTPUT_DIR = "E:/MyProjects/policy-consistency-check/py-backend/output"
 
 app = FastAPI(
     title="一致性检查",
@@ -13,7 +17,7 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# 应用启动时初始化存储目录与SQLite数据库
+# 初始化SQLite数据库
 @app.on_event("startup")
 async def _startup_init():
     db_path = init_storage_and_db()
@@ -28,6 +32,6 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
         app,
-        host="0.0.0.0",
-        port=10010,
+        host=APP_HOST,
+        port=APP_PORT,
     )

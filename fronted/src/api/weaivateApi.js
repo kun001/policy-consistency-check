@@ -1,6 +1,6 @@
-const BASE_PREFIX = '/api';
-export const TARGET_DATASET_ID = 'national_policy_documents';
-export const LOCAL_DATASET_ID = 'policy_documents';
+import { BASE_PREFIX, TARGET_DATASET_ID, LOCAL_DATASET_ID } from './config';
+// 为保持对组件的兼容性，继续从本模块导出数据集常量
+export { TARGET_DATASET_ID, LOCAL_DATASET_ID } from './config';
 
 // 从文件名提取不带扩展的名称
 const stripExt = (name = '') => name.replace(/\.[^/.]+$/, '');

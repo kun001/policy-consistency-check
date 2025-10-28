@@ -10,10 +10,11 @@ if str(SRC_DIR) not in sys.path:
     sys.path.append(str(SRC_DIR))
 
 from src.weaviate.weaviateEngine import WeaviateEngine
-
-DEFAULT_COLLECTION_NAME = "policy_documents"
-DEFAULT_SILICONFLOW_API_TOKEN = "sk-dybroxxstjaxkyrnevsqdjikzardzzsppbvwbmimrflpoyfj"
-DEFAULT_WEAVIATE_API_KEY = "key_kunkun"
+from src.settings import (
+    DEFAULT_COLLECTION_NAME,
+    SILICONFLOW_API_TOKEN as DEFAULT_SILICONFLOW_API_TOKEN,
+    WEAVIATE_API_KEY as DEFAULT_WEAVIATE_API_KEY,
+)
 
 
 def _init_engine(
@@ -131,11 +132,16 @@ def weaviate_search(
     limit: int = 10,
     filter_conditions: Optional[Sequence[Dict[str, Any]]] = None,
     filters: Optional[Dict[str, Any]] = None,
+    search_type: str = "hybrid",
+    alpha: Optional[float] = None,
+    fusion_type: Optional[str] = None,
+    max_vector_distance: Optional[float] = None,
+    bm25_properties: Optional[Sequence[str]] = None,
+    bm25_search_operator: Optional[int] = None,
+    vector: Optional[Sequence[float]] = None,
 ) -> List[Dict[str, Any]]:
     """
-    在 Weaviate 向量库中搜索相似内容。
-    filter_conditions: 传入简化的条件列表，由引擎内部构建 filter。
-    filters: 若外部已经构建好，可直接传入覆盖 filter_conditions。
+    在 Weaviate 中搜索内容，支持三种检索方式：关键词（BM25）、混合（Hybrid，默认）、向量（Near Vector）。
     """
     engine = _init_engine(
         collection_name,
@@ -155,8 +161,15 @@ def weaviate_search(
             query,
             limit=limit,
             filters=final_filters,
+            search_type=search_type,
+            alpha=alpha,
+            fusion_type=fusion_type,
+            max_vector_distance=max_vector_distance,
+            bm25_properties=bm25_properties,
+            bm25_search_operator=bm25_search_operator,
+            vector=vector,
         )
-        print(f"Weaviate：检索完成，共返回 {len(results)} 条结果。")
+        print(f"Weaviate：{(search_type or 'hybrid').lower()} 检索完成，共返回 {len(results)} 条结果。")
         return results
     except Exception as exc:  # pragma: no cover
         print(f"Weaviate：检索失败，原因：{exc}")
