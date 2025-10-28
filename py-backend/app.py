@@ -1,14 +1,17 @@
+from pathlib import Path
+from dotenv import load_dotenv, find_dotenv
+
+# 优先在后端目录加载环境文件，确保路由依赖的设置已生效
+BACKEND_DIR = Path(__file__).resolve().parent
+load_dotenv(BACKEND_DIR / ".env", override=False)
+load_dotenv(find_dotenv(), override=False)
+
 from fastapi import FastAPI
+from src.settings import APP_HOST, APP_PORT
 from router.weaviate import router as weaviate_router
 from router.rag import router as rag_router
 from router.compare import router as compare_router
 from src.storage import init_storage_and_db
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except Exception:
-    pass
-from src.settings import APP_HOST, APP_PORT
 
 
 app = FastAPI(

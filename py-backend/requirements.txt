@@ -6,6 +6,7 @@ requests>=78.1.1
 python-dotenv>=1.0
 python-multipart>=0.0.20
 tqdm>=4.67.1
+dotenv>=0.9.9
 
 # Weaviate client (HTTP + gRPC)
 weaviate-client>=4.16.10

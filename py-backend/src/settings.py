@@ -1,12 +1,12 @@
 import os
 from pathlib import Path
+from dotenv import load_dotenv, find_dotenv
 
-# Try to load .env files automatically (optional)
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except Exception:
-    pass
+# 明确从后端目录加载
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+load_dotenv(BACKEND_DIR / ".env", override=False)
+load_dotenv(find_dotenv(), override=False)
+
 
 def _env_bool(name: str, default: bool = False) -> bool:
     val = os.getenv(name)

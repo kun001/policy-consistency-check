@@ -1,16 +1,37 @@
-# 政策一致性检查（Policy Consistency Check）
+# 项目概要
+这是一个基于真实的企业需求而构建的演示项目，名为“政策规则一致性检查”，用以解决省级、市级所制定的政策规则是否与国家层面的政策规则相冲突或违背。
+该项目是一个框架类项目，一是用以验证该需求的真实可行性，提供一个实际的解决方案MVP。二是该项目是通过Trae AI全称程构建的，同时用以验证AI的辅助实用性与使用逻辑方法。
+从10月9日开始，利用空闲业余时间开发，10月24日基本完成总体框架，历时15天完成从概念到雏形全部落地。
 
-一个用于“政策文件解析、入库与一致性对比”的全栈示例项目。前端支持上传/浏览/对比，本地或生产后端提供解析与向量检索服务，结合 Weaviate 与外部解析服务完成端到端流程。
+![需求进度表](./fronted/assets/需求进度表.png)
 
+## 项目架构
+前端支持上传/浏览/对比，本地或生产后端提供解析与向量检索服务，结合 Weaviate 与外部解析服务完成端到端流程。
 - 前端：React + Vite + Ant Design + Tailwind
 - 后端：FastAPI（Python），Weaviate 客户端，SQLite 持久化，智谱文档解析，SiliconFlow 向量化
 
 ## 功能概览
-
 - 上传并解析政策文件：一次性完成解析、切分、向量化与持久化（`/api/rag/ingest-and-index`）
 - 政策文件库：国家与地方政策列表、详情、分段数据查看
 - 一致性对比：地方政策条款与国家政策条款的差异分析（`/api/compare/analyze`）
 - RAG 检索：基于 Weaviate 的混合/向量搜索（`/api/rag/search`、`/api/weaviate/search`）
+
+## 用户操作逻辑
+1. 上传政策文件：用户在前端上传地方政策文件和国家政策文件。
+2. 解析与索引：后端接收文件后，利用智谱文档解析服务解析文件内容，提取条款、向量化后存储到 Weaviate RAG 中。
+3. 查看政策文件库：用户可以在前端查看已上传的政策文件列表，点击文件可查看详细内容。
+4. 对比分析：用户选择需要对比的地方政策条款与国家政策条款，后端调用 Weaviate 进行向量检索，通过大模型加以分析返回对比分析结果。
+
+## 实际效果
+随机找的成都商业性个人住房贷款贷款为例。
+### 上传并解析政策文件
+![上传并解析政策文件](./fronted/assets/文件上传页面.png)
+### 地方政策文件库
+![地方政策文件库](./fronted/assets/地方政策文件库.png)
+### 国家政策文件库
+![国家政策文件库](./fronted/assets/国家政策文件库.png)
+### 实际对比效果
+![实际对比效果](./fronted/assets/差异对比结果.png)
 
 ## 目录结构
 
@@ -35,14 +56,14 @@ policy-consistency-check/
 - 创建并激活虚拟环境后安装依赖（示例）：
 
 ```bash
-pip install fastapi uvicorn weaviate-client requests python-dotenv pydantic tqdm
+pip install -r requirements.txt
 ```
 
-- 配置环境变量：复制 `py-backend/.env.example` 为 `py-backend/.env.development`，填写至少以下项：
-  - `SILICONFLOW_API_TOKEN`：向量化所需 Token
-  - `WEAVIATE_API_KEY`：Weaviate 访问密钥
-  - `ZHIPU_API_TOKEN`：智谱文档解析 Token
-  - 如需修改 Weaviate 连接或服务端口，按需覆盖对应变量
+- 配置环境变量：复制 `py-backend/.env.example` 为 `py-backend/.env`，填写至少以下项：
+  - `SILICONFLOW_API_TOKEN`：硅基流动的Token，可更换为任何支持OpenAI接口的向量化服务。
+  - `WEAVIATE_API_KEY`：Weaviate 访问密钥，需要安装docker weaviate服务。
+  - `ZHIPU_API_TOKEN`：智谱文档解析 Token，可以更换为其它第三方提取文字内容的服务。
+  - 如需修改 Weaviate 连接或服务端口，按需覆盖对应变量或代码
 
 - 启动：
 
@@ -58,7 +79,7 @@ python py-backend/app.py
 ```bash
 cd fronted
 pnpm install
-cp .env.example .env.development  # 按需填写变量
+cp .env.example .env  # 按需填写变量
 pnpm run dev
 ```
 
@@ -78,7 +99,6 @@ pnpm run dev
 > 注意：所有以 `VITE_` 前缀的变量会被构建到客户端，请勿放置敏感信息。
 
 ### 后端（FastAPI）
-
 - 服务：`APP_HOST`、`APP_PORT`
 - 集合：`DEFAULT_COLLECTION_NAME`（默认 `policy_documents`）
 - SiliconFlow：`SILICONFLOW_API_TOKEN`
@@ -92,7 +112,6 @@ pnpm run dev
 > 后端通过 `src/settings.py` 统一读取环境变量，`app.py` 在启动时加载 `.env`。
 
 ## 主要 API（摘要）
-
 - 解析与入库
   - `POST /api/rag/ingest-and-index`：上传文件 → 解析 → 切分 → 向量化 → 持久化
   - `GET  /api/rag/documents?collection_name=...`：列出集合中文档
@@ -111,27 +130,6 @@ pnpm run dev
 - 数据库（SQLite）：`collections`、`documents`、`chunks` 等表，记录文档元信息与向量化状态。
 - 向量库：Weaviate，封装于 `src/weaviate/weaviateEngine.py` 与 `api/weaivateApi.py`。
 
-## 测试（后端）
-
-- 示例测试位于 `py-backend/tests/`，部分测试依赖真实 Token 与可用的 Weaviate 服务。
-- 运行示例：
-
-```bash
-python py-backend/tests/test_embedding_pipeline.py
-python py-backend/tests/test_weaviate_engine.py
-```
-
-> 请在本地 `.env.development` 中配置必需的 Token 与连接参数，避免将真实凭证提交到仓库。
-
-## 开发与部署建议
-
-- 保持 `.env*` 文件与 `storage/` 目录在版本控制中忽略（仓库已配置 `.gitignore`）。
-- 前端的所有敏感信息必须由后端读取与持有（不要放入 `VITE_` 变量）。
-- 生产环境建议：
-  - 为后端部署反向代理与 TLS，限制接口暴露范围
-  - 将 SQLite 迁移到托管数据库（如 Postgres/MySQL）并加上更细的索引策略
-  - 将 `storage/` 迁移到对象存储（OSS/S3），通过配置项设置基路径
 
 ## 许可
-
 本项目仅作为演示用示例代码，未附带许可证文件。若需明确许可证，请在仓库中添加相应的 LICENSE 文件。
