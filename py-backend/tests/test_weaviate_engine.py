@@ -86,29 +86,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-    # import weaviate
-    # from weaviate.auth import AuthApiKey
-
-    # # 或者自定义连接
-    # client = weaviate.connect_to_custom(
-    #     skip_init_checks=False,
-    #     http_host="115.190.118.177",
-    #     http_port=8080,
-    #     http_secure=False,
-    #     grpc_host="115.190.118.177",
-    #     grpc_port=50051,
-    #     grpc_secure=False,
-    #     auth_credentials=AuthApiKey("key_kunkun")
-    #     )
-
-    # # 检查连接是否成功
-    # print(client.is_ready())
-
-    # print(client.collections.list_all().keys())
-
-    # # 删除集合
-    # for collection_name in client.collections.list_all().keys():
-    #     client.collections.delete(collection_name)
-
-    # # 关闭连接
-    # print(client.close())

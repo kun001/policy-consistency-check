@@ -15,8 +15,6 @@ ENV/
 
 # Environment variable files
 .env
-.env.*
-.env.local
 
 # Distribution / packaging
 build/
