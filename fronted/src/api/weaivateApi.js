@@ -79,7 +79,7 @@ export const transformNationalPolicyData = (dataset, documents) => {
       if (lowerName.includes('经济') || lowerName.includes('产业')) return '产业政策';
       if (lowerName.includes('环境') || lowerName.includes('碳') || lowerName.includes('绿色')) return '环境政策';
       if (lowerName.includes('数字') || lowerName.includes('信息') || lowerName.includes('网络')) return '数字政策';
-      if (lowerName.includes('电力') || lowerName.includes('能源')) return '能源政策';
+      if (lowerName.includes('环保') || lowerName.includes('环境')) return '环保政策';
       if (lowerName.includes('市场') || lowerName.includes('披露')) return '市场监管';
       if (lowerName.includes('金融') || lowerName.includes('银行')) return '金融政策';
       return '国家政策';
@@ -93,8 +93,7 @@ export const transformNationalPolicyData = (dataset, documents) => {
       if (lowerName.includes('经济')) tags.push('经济');
       if (lowerName.includes('市场')) tags.push('市场');
       if (lowerName.includes('信息')) tags.push('信息');
-      if (lowerName.includes('披露')) tags.push('披露');
-      if (lowerName.includes('电力')) tags.push('电力');
+      if (lowerName.includes('环保')) tags.push('环保');
       if (lowerName.includes('能源')) tags.push('能源');
       if (lowerName.includes('基本规则')) tags.push('基本规则');
       if (lowerName.includes('管理')) tags.push('管理');
