@@ -132,7 +132,3 @@ pnpm run dev
   - `storage/docs/<collection_id>/<doc_id>/parsed/` 解析产物（`content.txt`、`toc.json`、`segments.json`、`keywords.json`）
 - 数据库（SQLite）：`collections`、`documents`、`chunks` 等表，记录文档元信息与向量化状态。
 - 向量库：Weaviate，封装于 `src/weaviate/weaviateEngine.py` 与 `api/weaivateApi.py`。
-
-
-## 许可
-本项目仅作为演示用示例代码，未附带许可证文件。若需明确许可证，请在仓库中添加相应的 LICENSE 文件。
