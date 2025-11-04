@@ -53,8 +53,8 @@ A modern React template for web applications and games, featuring React 18, Vite
 
 使用方法：
 
-1. 复制 `.env.example` 为 `.env.development`，根据需要填写上述变量。
-2. 本地开发运行 `pnpm run dev`，Vite 会读取 `.env.development` 并代理 `/api` 到后端。
+1. 复制 `.env.example` 为 `.env`，根据需要填写上述变量。
+2. 本地开发运行 `pnpm run dev`，Vite 会读取 `.env` 并代理 `/api` 到后端。
 3. 生产部署时设置 `VITE_API_BASE_URL` 与 `VITE_API_BASE_PREFIX`，前端将使用 `${VITE_API_BASE_URL}${VITE_API_BASE_PREFIX}` 作为接口前缀。
 
 注意：`.gitignore` 已忽略 `.env*` 文件，请勿将真实环境配置提交到 GitHub。
